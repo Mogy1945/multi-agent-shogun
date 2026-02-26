@@ -30,6 +30,8 @@ MODEL_SHOGUN="opus"
 MODEL_KARO="opus"
 MODEL_ASHIGARU_SONNET="sonnet"
 MODEL_ASHIGARU_OPUS="opus"
+MODEL_SHINOBICHO="opus"
+MODEL_SHINOBI="opus"
 
 # ============================================================
 # 1. read_settings() — config/settings.yaml から設定読み取り
@@ -240,6 +242,7 @@ cleanup_sessions() {
     tmux kill-session -t taishogun 2>/dev/null && log_info "  └─ taishogun陣、撤収完了" || true
     tmux kill-session -t armyA 2>/dev/null && log_info "  └─ armyA陣、撤収完了" || true
     tmux kill-session -t armyB 2>/dev/null && log_info "  └─ armyB陣、撤収完了" || true
+    tmux kill-session -t shinobi 2>/dev/null && log_info "  └─ shinobi陣、撤収完了" || true
 
     sleep 0.5
 }
@@ -318,6 +321,15 @@ EOF
     # taishogun_to_shogun.yaml リセット
     echo "queue: []" > "$BASE_DIR/queue/taishogun_to_shogun.yaml"
 
+    # shinobiキューリセット
+    if [ -d "queue/shinobi" ]; then
+        log_info "  shinobiキューをリセット..."
+        echo "queue: []" > queue/taishogun_to_shinobi.yaml 2>/dev/null || true
+        for tai in 1 2 3; do
+            echo -e "task:\n  task_id: null\n  status: idle\n  timestamp: \"\"\n  description: \"\"" > "queue/shinobi/tasks/shinobi${tai}.yaml" 2>/dev/null || true
+        done
+    fi
+
     log_success "陣払い完了"
 }
 
@@ -364,6 +376,47 @@ init_army_queues() {
     if [ ! -f "$BASE_DIR/queue/taishogun_to_shogun.yaml" ]; then
         echo "queue: []" > "$BASE_DIR/queue/taishogun_to_shogun.yaml"
     fi
+}
+
+# ============================================================
+# 6b. init_shinobi_queues() — 忍衆キューディレクトリ初期化
+# ============================================================
+init_shinobi_queues() {
+    log_war "忍衆キューを初期化中..."
+    mkdir -p queue/shinobi/tasks queue/shinobi/reports queue/shinobi/archive
+
+    # 大将軍→忍頭 密命キュー
+    if [ ! -f "queue/taishogun_to_shinobi.yaml" ]; then
+        cat > queue/taishogun_to_shinobi.yaml << 'YAML_EOF'
+# ============================================================
+# taishogun_to_shinobi.yaml — 大将軍 → 忍頭 密命キュー
+# ============================================================
+queue: []
+YAML_EOF
+    fi
+
+    # 忍 任務書
+    for tai in 1 2 3; do
+        if [ ! -f "queue/shinobi/tasks/shinobi${tai}.yaml" ]; then
+            cat > "queue/shinobi/tasks/shinobi${tai}.yaml" << 'YAML_EOF'
+task:
+  task_id: null
+  status: idle
+  timestamp: ""
+  description: ""
+YAML_EOF
+        fi
+    done
+
+    # gitkeep
+    touch queue/shinobi/reports/.gitkeep 2>/dev/null || true
+
+    # アーカイブ
+    if [ ! -f "queue/shinobi/archive/commands.yaml" ]; then
+        echo "archive: []" > queue/shinobi/archive/commands.yaml
+    fi
+
+    log_success "  └─ 忍衆キュー初期化完了"
 }
 
 # ============================================================
@@ -443,6 +496,33 @@ EOF
         fi
     done
 
+    # 忍衆ダッシュボード
+    if [ ! -f "$BASE_DIR/dashboard_shinobi.md" ]; then
+        cat > "$BASE_DIR/dashboard_shinobi.md" << 'MD_EOF'
+# 忍衆 ダッシュボード
+
+> **更新者**: 忍頭（shinobicho）
+> **最終更新**: —
+
+## 🚨 要対応
+
+（なし）
+
+## 📋 現在任務
+
+| 担当 | 任務ID | 内容 | ステータス |
+|------|---------|------|----------|
+| 忍頭 | — | — | idle |
+| 忍1 | — | — | idle |
+| 忍2 | — | — | idle |
+| 忍3 | — | — | idle |
+
+## ✅ 完了任務
+
+（なし）
+MD_EOF
+    fi
+
     log_success "  └─ ダッシュボード初期化完了 (言語: $LANG_SETTING)"
 }
 
@@ -493,6 +573,49 @@ setup_taishogun() {
     tmux send-keys -t taishogun:main.0 "cd \"$BASE_DIR\" && export PS1='${PROMPT_STR}' && clear" Enter
 
     log_success "  └─ 大将軍の本陣、構築完了"
+}
+
+# ============================================================
+# 9b. setup_shinobi() — 忍衆セッション作成（4ペイン）
+# ============================================================
+setup_shinobi() {
+    log_war "忍衆の陣を構築中（忍頭+忍×3）..."
+    tmux new-session -d -s shinobi -x 200 -y 50
+    tmux rename-window -t "shinobi:0" "agents"
+
+    # 3回splitで合計4ペイン
+    for _ in $(seq 1 3); do
+        tmux split-window -t "shinobi:agents" || true
+        tmux select-layout -t "shinobi:agents" tiled
+    done
+    tmux select-layout -t "shinobi:agents" tiled
+
+    # 忍頭（pane 0）
+    tmux set-option -p -t "shinobi:agents.0" @agent_id "shinobicho"
+    tmux set-option -p -t "shinobi:agents.0" @army_id "shinobi"
+    tmux set-option -p -t "shinobi:agents.0" @army_session "shinobi"
+    tmux set-option -p -t "shinobi:agents.0" @model_name "Opus"
+    tmux select-pane -t "shinobi:agents.0" -T "shinobicho (Opus)"
+    local PROMPT_STR
+    PROMPT_STR=$(generate_prompt "忍頭" "cyan" "$SHELL_SETTING")
+    tmux send-keys -t "shinobi:agents.0" "cd \"$BASE_DIR\" && export PS1='${PROMPT_STR}' && clear" Enter
+
+    # 忍（pane 1-3）
+    for i in $(seq 1 3); do
+        local agent_id="shinobi${i}"
+        local model_name="Sonnet"
+        tmux set-option -p -t "shinobi:agents.${i}" @agent_id "$agent_id"
+        tmux set-option -p -t "shinobi:agents.${i}" @army_id "shinobi"
+        tmux set-option -p -t "shinobi:agents.${i}" @army_session "shinobi"
+        tmux set-option -p -t "shinobi:agents.${i}" @model_name "$model_name"
+        tmux select-pane -t "shinobi:agents.${i}" -T "${agent_id} (${model_name})"
+        PROMPT_STR=$(generate_prompt "忍${i}" "cyan" "$SHELL_SETTING")
+        tmux send-keys -t "shinobi:agents.${i}" "cd \"$BASE_DIR\" && export PS1='${PROMPT_STR}' && clear" Enter
+    done
+
+    tmux set-option -t shinobi -w pane-border-status top
+    tmux set-option -t shinobi -w pane-border-format '#{pane_index} #{@agent_id} (#{?#{==:#{@model_name},},unknown,#{@model_name}})'
+    log_success "  └─ shinobi の陣、構築完了"
 }
 
 # ============================================================
@@ -642,6 +765,27 @@ launch_claude_army() {
 }
 
 # ============================================================
+# 13b. launch_claude_shinobi() — 忍衆にClaude Code起動
+# ============================================================
+launch_claude_shinobi() {
+    log_war "忍衆に Claude Code を召喚中..."
+    # 忍頭（Opus）
+    tmux send-keys -t "shinobi:agents.0" \
+        "MAX_THINKING_TOKENS=0 $CLAUDE_CMD --model $MODEL_SHINOBICHO --dangerously-skip-permissions" \
+        Enter
+    sleep 1
+    log_info "  └─ 忍頭、召喚完了"
+    # 忍（1-3）
+    for i in $(seq 1 3); do
+        tmux send-keys -t "shinobi:agents.${i}" \
+            "$CLAUDE_CMD --model $MODEL_SHINOBI --dangerously-skip-permissions" \
+            Enter
+        sleep 1
+    done
+    log_info "  └─ 忍1-3、召喚完了"
+}
+
+# ============================================================
 # 14. send_initial_instructions() — 全エージェントに指示書送信
 # ============================================================
 send_initial_instructions() {
@@ -688,6 +832,20 @@ send_initial_instructions() {
 
         log_info "  └─ ${army_id} 全エージェントに指示書伝達完了"
     done
+
+    # --- 忍衆 ---
+    log_info "忍衆に初期指示を送信中..."
+    tmux send-keys -t "shinobi:agents.0" 'instructions/sets/shinobi/shinobicho.md を読んでセッションを開始せよ。'
+    sleep 0.5
+    tmux send-keys -t "shinobi:agents.0" Enter
+    sleep 2
+    for i in $(seq 1 3); do
+        tmux send-keys -t "shinobi:agents.${i}" "instructions/sets/shinobi/shinobi.md を読んでセッションを開始せよ。"
+        sleep 0.3
+        tmux send-keys -t "shinobi:agents.${i}" Enter
+        sleep 0.5
+    done
+    log_success "  └─ 忍衆初期指示送信完了"
 
     log_success "全軍に指示書伝達完了"
 }
@@ -853,6 +1011,7 @@ main() {
     # 7. キューディレクトリ初期化（通常時: 未存在時のみ作成）
     init_army_queues "armyA"
     init_army_queues "armyB"
+    init_shinobi_queues
 
     # 8. ダッシュボード初期化（--clean時のみ）
     init_dashboards
@@ -861,11 +1020,12 @@ main() {
 
     # 9. セッション作成
     setup_taishogun
+    setup_shinobi
     setup_army "armyA"
     setup_army "armyB"
 
     echo ""
-    log_success "セッション作成完了: taishogun(1) + armyA(10) + armyB(10) = 21ペイン"
+    log_success "セッション作成完了: taishogun(1) + shinobi(4) + armyA(10) + armyB(10) = 25ペイン"
     echo ""
 
     # 10. エイリアス登録
@@ -881,6 +1041,7 @@ main() {
         fi
 
         launch_claude_taishogun
+        launch_claude_shinobi
         launch_claude_army "armyA"
         launch_claude_army "armyB"
 

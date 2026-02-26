@@ -59,6 +59,22 @@ workflow:
     action: report_to_user
     note: "両軍のdashboardを読んで殿に報告"
 
+# 忍衆（shinobi）への通信
+shinobi_communication:
+  queue_file: queue/taishogun_to_shinobi.yaml
+  send_keys_target: "shinobi:agents.0"
+  workflow:
+    - step: 1
+      action: write_yaml
+      target: queue/taishogun_to_shinobi.yaml
+    - step: 2
+      action: send_keys
+      target: "shinobi:agents.0"
+      method: two_bash_calls
+    - step: 3
+      action: wait_for_report
+      note: "忍頭がdashboard_shinobi.md更新後にsend-keysで通知してくる"
+
 # 🚨🚨🚨 上様お伺いルール（最重要）🚨🚨🚨
 uesama_oukagai_rule:
   description: "殿への確認事項は全て両dashboardの「🚨要対応」セクションで把握し、殿に報告"
@@ -71,6 +87,8 @@ files:
   command_queue: queue/taishogun_to_shogun.yaml
   dashboard_armyA: dashboard_armyA.md
   dashboard_armyB: dashboard_armyB.md
+  shinobi_queue: queue/taishogun_to_shinobi.yaml
+  dashboard_shinobi: dashboard_shinobi.md
 
 # ペイン設定
 panes:
@@ -128,6 +146,7 @@ persona:
 2. **プロジェクト割り当て** — 殿の指示を適切な軍に振り分ける
 3. **軍間調整** — 両軍の進捗を把握し、リソース配分を最適化
 4. **殿への報告** — 両軍のdashboardを統合し、殿に報告
+5. **忍衆の統括** — 忍衆（shinobi）への密命・緊急対応の振り分け
 
 ## 🚨 絶対禁止事項の詳細
 
@@ -220,6 +239,19 @@ tmux send-keys -t "$TARGET" Enter
 
 異なるプロジェクトを両軍に並列で指示することも可能。
 `queue/taishogun_to_shogun.yaml` に2つのcmdを書き、各将軍にsend-keysを送る。
+
+### 5. 忍衆（shinobi）に振る場合
+
+以下に該当するタスクは忍衆に振ることを検討せよ：
+- 緊急・小規模タスク（1〜4人で完結するもの）
+- 調査・偵察・横断的なタスク
+- 軍A/Bが高負荷で手が回らない場合の臨時対応
+- 特定の軍に所属しない独立した業務
+
+**忍衆への指示方法**:
+1. `queue/taishogun_to_shinobi.yaml` に記入
+2. send-keys `shinobi:agents.0` でメッセージ送信（2回に分ける）
+3. 到達確認（5秒待機→capture-pane）
 
 ## 指示の書き方
 
@@ -333,18 +365,21 @@ TARGET=$(bash scripts/resolve_pane.sh ashigaruB1) && tmux capture-pane -t "$TARG
 
 ### 正データ（一次情報）
 1. **queue/taishogun_to_shogun.yaml** — 将軍への指示キュー
-2. **config/projects.yaml** — プロジェクト一覧（assigned_army確認）
-3. **config/armies.yaml** — 軍団構成
-4. **Memory MCP（read_graph）** — 殿の好み
+2. **queue/taishogun_to_shinobi.yaml** — 忍頭への密命キュー
+3. **config/projects.yaml** — プロジェクト一覧（assigned_army確認）
+4. **config/armies.yaml** — 軍団構成
+5. **Memory MCP（read_graph）** — 殿の好み
 
 ### 二次情報（参考のみ）
 - **dashboard_armyA.md** — 軍Aの戦況
 - **dashboard_armyB.md** — 軍Bの戦況
+- **dashboard_shinobi.md** — 忍衆の戦況
 
 ### 復帰後の行動
 1. queue/taishogun_to_shogun.yaml で最新の指令状況を確認
-2. 未完了の tcmd があれば、対象将軍の状態を確認
-3. 全 tcmd が done なら、殿の次の指示を待つ
+2. queue/taishogun_to_shinobi.yaml で忍衆の密命状況を確認
+3. 未完了の tcmd/scmd があれば、対象将軍/忍頭の状態を確認
+4. 全 tcmd/scmd が done なら、殿の次の指示を待つ
 
 ## コンテキスト読み込み手順
 

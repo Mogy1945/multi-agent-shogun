@@ -24,6 +24,8 @@ multi-agent-shogunは、Claude Code + tmux を使ったマルチエージェン�
    - 将軍 → instructions/shogun.md
    - 家老 → instructions/karo.md
    - 足軽 → instructions/ashigaru.md
+   - 忍頭 → instructions/shinobicho.md
+   - 忍 → instructions/shinobi.md
 4. **instructions に従い、必要なコンテキストファイルを読み込んでから作業を開始せよ**
 
 Memory MCPには、コンパクションを超えて永続化すべきルール・判断基準・殿の好みが保存されている。
@@ -48,11 +50,15 @@ Memory MCPには、コンパクションを超えて永続化すべきルール�
    - `karoA` / `karoB` → 家老（軍A/軍B）
    - `ashigaruA1` ～ `ashigaruA8` → 足軽（軍A）
    - `ashigaruB1` ～ `ashigaruB8` → 足軽（軍B）
+   - `shinobicho` → 忍頭
+   - `shinobi1` ～ `shinobi3` → 忍
 2. **対応する instructions を読む**:
    - 大将軍 → instructions/taishogun.md
    - 将軍 → instructions/shogun.md
    - 家老 → instructions/karo.md
    - 足軽 → instructions/ashigaru.md
+   - 忍頭 → instructions/shinobicho.md
+   - 忍 → instructions/shinobi.md
 3. **instructions 内の「コンパクション復帰手順」に従い、正データから状況を再把握する**
 4. **禁止事項を確認してから作業開始**
 
@@ -155,25 +161,28 @@ Layer 4: Session（揮発・コンテキスト内）
 │   TAISHOGUN      │ ← 大将軍（全軍統括）
 │   (大将軍)       │
 └──────┬───────────┘
-       │ queue/taishogun_to_shogun.yaml
-       ├───────────────────────┐
-       ▼                       ▼
-┌──────────────┐       ┌──────────────┐
-│  SHOGUN A    │       │  SHOGUN B    │
-│  (将軍A)     │       │  (将軍B)     │
-└──────┬───────┘       └──────┬───────┘
-       │                       │
-       ▼                       ▼
-┌──────────────┐       ┌──────────────┐
-│   KARO A     │       │   KARO B     │
-│  (家老A)     │       │  (家老B)     │
-└──────┬───────┘       └──────┬───────┘
-       │                       │
-       ▼                       ▼
-┌───┬───┬───┬───┐     ┌───┬───┬───┬───┐
-│A1 │A2 │...│A8 │     │B1 │B2 │...│B8 │
-└───┴───┴───┴───┘     └───┴───┴───┴───┘
-   軍A足軽                軍B足軽
+       │
+       ├─────────────────┬───────────────────────┐
+       │                 │                         │
+       │ taishogun_      │ taishogun_              │ taishogun_
+       │ to_shinobi.yaml │ to_shogun.yaml          │ to_shogun.yaml
+       ▼                 ▼                         ▼
+┌──────────────┐ ┌──────────────┐       ┌──────────────┐
+│  SHINOBICHO  │ │  SHOGUN A    │       │  SHOGUN B    │
+│  (忍頭)      │ │  (将軍A)     │       │  (将軍B)     │
+└──────┬───────┘ └──────┬───────┘       └──────┬───────┘
+       │                │                       │
+       ▼                ▼                       ▼
+┌───┬───┬───┐  ┌──────────────┐       ┌──────────────┐
+│S1 │S2 │S3 │  │   KARO A     │       │   KARO B     │
+└───┴───┴───┘  │  (家老A)     │       │  (家老B)     │
+  忍            └──────┬───────┘       └──────┬───────┘
+                       │                       │
+                       ▼                       ▼
+               ┌───┬───┬───┬───┐     ┌───┬───┬───┬───┐
+               │A1 │A2 │...│A8 │     │B1 │B2 │...│B8 │
+               └───┴───┴───┴───┘     └───┴───┴───┴───┘
+                  軍A足軽                軍B足軽
 ```
 
 ## ファイル操作の鉄則（全エージェント必須）
@@ -238,6 +247,8 @@ TARGET=$(bash scripts/resolve_pane.sh ashigaruA5) || echo "dead"
 | 自軍の将軍 | `shogun${SUFFIX}` |
 | 自軍の家老 | `karo${SUFFIX}` |
 | 自軍の足軽N | `ashigaru${SUFFIX}{N}`（例: ashigaruA3） |
+| 忍頭 | `shinobicho` |
+| 忍N | `shinobi{N}`（忍1=shinobi1, 3=shinobi3） |
 
 ### イベント駆動通信（YAML + send-keys）
 - ポーリング禁止（API代金節約のため）
@@ -272,6 +283,12 @@ TARGET=$(bash scripts/resolve_pane.sh ashigaruA5) || echo "dead"
 - **足軽→家老**: `queue/${ARMY_ID}/reports/ashigaru{N}_report.yaml` + send-keys `$(bash scripts/resolve_pane.sh karo${SUFFIX})`
 - **家老→将軍**: dashboard更新 + send-keys `$(bash scripts/resolve_pane.sh shogun${SUFFIX})`
 
+**忍衆通信**:
+- **大将軍→忍頭**: `queue/taishogun_to_shinobi.yaml` に記入 + send-keys `shinobi:agents.0`
+- **忍頭→忍**: `queue/shinobi/tasks/shinobi{N}.yaml` に書く + send-keys `shinobi:agents.{N}`
+- **忍→忍頭**: `queue/shinobi/reports/shinobi{N}_report.yaml` に書く + send-keys `shinobi:agents.0`
+- **忍頭→大将軍**: dashboard_shinobi.md更新 + send-keys `taishogun:main`
+
 ### ファイル構成
 ```
 config/projects.yaml                         # プロジェクト一覧（assigned_army付き）
@@ -280,6 +297,7 @@ projects/<id>.yaml                           # 各プロジェクトの詳細情
 status/master_status.yaml                    # 全体進捗
 
 queue/taishogun_to_shogun.yaml               # 大将軍 → 将軍 指示
+queue/taishogun_to_shinobi.yaml              # 大将軍 → 忍頭 密命
 
 queue/armyA/                                 # 軍A用キュー
   shogun_to_karo.yaml                        # 将軍A → 家老A 指示
@@ -292,14 +310,20 @@ queue/armyA/                                 # 軍A用キュー
 queue/armyB/                                 # 軍B用キュー（同構造）
   （armyAと同じ構造）
 
+queue/shinobi/                               # 忍衆用キュー
+  tasks/shinobi{1-3}.yaml                    # 忍頭 → 忍 割当
+  reports/shinobi{1-3}_report.yaml           # 忍 → 忍頭 報告
+  archive/commands.yaml                      # 完了済み密命
+
 dashboard_armyA.md                           # 軍A用ダッシュボード
 dashboard_armyB.md                           # 軍B用ダッシュボード
+dashboard_shinobi.md                         # 忍衆ダッシュボード
 
 instructions/taishogun.md                    # 大将軍指示書
 instructions/shogun.md                       # 将軍指示書
 instructions/karo.md                         # 家老指示書
 instructions/ashigaru.md                     # 足軽指示書
-instructions/sets/                           # instructionsセット（original, coc_trpg等）
+instructions/sets/                           # instructionsセット（original, coc_trpg, shinobi等）
 scripts/shutsujin_departure.sh               # 出陣（起動）スクリプト
 scripts/switch_set.sh                        # セット切り替えスクリプト
 ```
@@ -343,7 +367,11 @@ projects/<id>.yaml          # 各プロジェクトの詳細（クライアン�
 - Pane 1 (agents.1): 家老B（@agent_id=karoB）
 - Pane 2-9 (agents.2-9): 足軽B1-B8（@agent_id=ashigaruB1〜ashigaruB8）
 
-**合計: 21ペイン（1 + 10 + 10）**
+### shinobiセッション（4ペイン）
+- Pane 0 (agents.0): 忍頭（@agent_id=shinobicho）
+- Pane 1-3 (agents.1-3): 忍1-3（@agent_id=shinobi1〜shinobi3）
+
+**合計: 25ペイン（1 + 10 + 10 + 4）**
 
 > **注意**: ペインが死ぬとインデックスが詰まり、上記の初期配置が崩れる。
 > 運用中のペイン参照は必ず `bash scripts/resolve_pane.sh <agent_id>` で動的解決せよ。

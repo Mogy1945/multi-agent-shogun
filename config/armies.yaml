@@ -22,3 +22,11 @@ armies:
 taishogun:
   session: taishogun
   initial_pane: 0
+
+shinobi:
+  session: shinobi
+  initial_shinobicho_pane: 0
+  initial_shinobi_panes: [1, 2, 3]
+  instruction_set: shinobi
+  dashboard: dashboard_shinobi.md
+  queue_dir: queue/shinobi
