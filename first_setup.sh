@@ -370,8 +370,12 @@ log_step "STEP 6: ディレクトリ構造作成"
 
 # 必要なディレクトリ一覧
 DIRECTORIES=(
-    "queue/tasks"
-    "queue/reports"
+    "queue/armyA/tasks"
+    "queue/armyA/reports"
+    "queue/armyA/archive"
+    "queue/armyB/tasks"
+    "queue/armyB/reports"
+    "queue/armyB/archive"
     "config"
     "status"
     "instructions"
@@ -489,12 +493,14 @@ RESULTS+=("設定ファイル: OK")
 # ============================================================
 log_step "STEP 8: キューファイル初期化"
 
-# 足軽用タスクファイル作成
-for i in {1..8}; do
-    TASK_FILE="$SCRIPT_DIR/queue/tasks/ashigaru${i}.yaml"
-    if [ ! -f "$TASK_FILE" ]; then
-        cat > "$TASK_FILE" << EOF
-# 足軽${i}専用タスクファイル
+# 足軽用タスク・レポートファイル作成（軍別）
+for army in armyA armyB; do
+    suffix="${army: -1}"  # A or B
+    for i in {1..8}; do
+        TASK_FILE="$SCRIPT_DIR/queue/${army}/tasks/ashigaru${i}.yaml"
+        if [ ! -f "$TASK_FILE" ]; then
+            cat > "$TASK_FILE" << EOF
+# 足軽${suffix}${i}専用タスクファイル
 task:
   task_id: null
   parent_cmd: null
@@ -503,24 +509,42 @@ task:
   status: idle
   timestamp: ""
 EOF
-    fi
-done
-log_info "足軽タスクファイル (1-8) を確認/作成しました"
+        fi
 
-# 足軽用レポートファイル作成
-for i in {1..8}; do
-    REPORT_FILE="$SCRIPT_DIR/queue/reports/ashigaru${i}_report.yaml"
-    if [ ! -f "$REPORT_FILE" ]; then
-        cat > "$REPORT_FILE" << EOF
-worker_id: ashigaru${i}
+        REPORT_FILE="$SCRIPT_DIR/queue/${army}/reports/ashigaru${i}_report.yaml"
+        if [ ! -f "$REPORT_FILE" ]; then
+            cat > "$REPORT_FILE" << EOF
+worker_id: ashigaru${suffix}${i}
 task_id: null
 timestamp: ""
 status: idle
 result: null
 EOF
+        fi
+    done
+
+    # shogun_to_karo.yaml（軍別）
+    if [ ! -f "$SCRIPT_DIR/queue/${army}/shogun_to_karo.yaml" ]; then
+        echo "queue: []" > "$SCRIPT_DIR/queue/${army}/shogun_to_karo.yaml"
+    fi
+
+    # kaizen.yaml（軍別）
+    if [ ! -f "$SCRIPT_DIR/queue/${army}/kaizen.yaml" ]; then
+        echo "entries: []" > "$SCRIPT_DIR/queue/${army}/kaizen.yaml"
+    fi
+
+    # archive/commands.yaml（軍別）
+    if [ ! -f "$SCRIPT_DIR/queue/${army}/archive/commands.yaml" ]; then
+        echo "archive: []" > "$SCRIPT_DIR/queue/${army}/archive/commands.yaml"
     fi
 done
-log_info "足軽レポートファイル (1-8) を確認/作成しました"
+
+# taishogun_to_shogun.yaml（共通）
+if [ ! -f "$SCRIPT_DIR/queue/taishogun_to_shogun.yaml" ]; then
+    echo "queue: []" > "$SCRIPT_DIR/queue/taishogun_to_shogun.yaml"
+fi
+
+log_info "軍別キューファイル (armyA/armyB) を確認/作成しました"
 
 RESULTS+=("キューファイル: OK")
 
@@ -531,7 +555,7 @@ log_step "STEP 9: 実行権限設定"
 
 SCRIPTS=(
     "setup.sh"
-    "shutsujin_departure.sh"
+    "scripts/shutsujin_departure.sh"
     "first_setup.sh"
 )
 
@@ -554,48 +578,33 @@ BASHRC_FILE="$HOME/.bashrc"
 
 # aliasが既に存在するかチェックし、なければ追加
 ALIAS_ADDED=false
+MARKER="# multi-agent-shogun aliases"
 
-# css alias (将軍ウィンドウの起動)
 if [ -f "$BASHRC_FILE" ]; then
-    EXPECTED_CSS="alias css='tmux attach-session -t shogun'"
-    if ! grep -q "alias css=" "$BASHRC_FILE" 2>/dev/null; then
-        # alias が存在しない → 新規追加
-        echo "" >> "$BASHRC_FILE"
-        echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
-        echo "$EXPECTED_CSS" >> "$BASHRC_FILE"
-        log_info "alias css を追加しました（将軍ウィンドウの起動）"
-        ALIAS_ADDED=true
-    elif ! grep -qF "$EXPECTED_CSS" "$BASHRC_FILE" 2>/dev/null; then
-        # alias は存在するがパスが異なる → 更新
-        if sed -i "s|alias css=.*|$EXPECTED_CSS|" "$BASHRC_FILE" 2>/dev/null; then
-            log_info "alias css を更新しました（パス変更検出）"
-        else
-            log_warn "alias css の更新に失敗しました"
-        fi
-        ALIAS_ADDED=true
-    else
-        log_info "alias css は既に正しく設定されています"
+    # 旧エイリアス（css, csm）を削除
+    if grep -q "alias css=" "$BASHRC_FILE" 2>/dev/null; then
+        sed -i "/alias css=/d" "$BASHRC_FILE"
+        log_info "旧alias css を削除しました"
+    fi
+    if grep -q "alias csm=" "$BASHRC_FILE" 2>/dev/null; then
+        sed -i "/alias csm=/d" "$BASHRC_FILE"
+        log_info "旧alias csm を削除しました"
     fi
 
-    # csm alias (家老・足軽ウィンドウの起動)
-    EXPECTED_CSM="alias csm='tmux attach-session -t multiagent'"
-    if ! grep -q "alias csm=" "$BASHRC_FILE" 2>/dev/null; then
-        if [ "$ALIAS_ADDED" = false ]; then
-            echo "" >> "$BASHRC_FILE"
-            echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
-        fi
-        echo "$EXPECTED_CSM" >> "$BASHRC_FILE"
-        log_info "alias csm を追加しました（家老・足軽ウィンドウの起動）"
-        ALIAS_ADDED=true
-    elif ! grep -qF "$EXPECTED_CSM" "$BASHRC_FILE" 2>/dev/null; then
-        if sed -i "s|alias csm=.*|$EXPECTED_CSM|" "$BASHRC_FILE" 2>/dev/null; then
-            log_info "alias csm を更新しました（パス変更検出）"
-        else
-            log_warn "alias csm の更新に失敗しました"
-        fi
-        ALIAS_ADDED=true
+    # 新制エイリアス登録
+    if grep -qF "$MARKER" "$BASHRC_FILE" 2>/dev/null; then
+        log_info "新制エイリアスは既に登録済みです"
     else
-        log_info "alias csm は既に正しく設定されています"
+        cat >> "$BASHRC_FILE" << EOF
+
+$MARKER
+alias csst="cd $SCRIPT_DIR && ./scripts/shutsujin_departure.sh"
+alias cst="tmux attach-session -t taishogun"
+alias csa="tmux attach-session -t armyA"
+alias csb="tmux attach-session -t armyB"
+EOF
+        log_info "新制エイリアス（csst, cst, csa, csb）を追加しました"
+        ALIAS_ADDED=true
     fi
 else
     log_warn "$BASHRC_FILE が見つかりません"
@@ -752,13 +761,13 @@ echo ""
 echo "  ────────────────────────────────────────────────────────────────"
 echo ""
 echo "  出陣（全エージェント起動）:"
-echo "     ./shutsujin_departure.sh"
+echo "     ./scripts/shutsujin_departure.sh"
 echo ""
 echo "  オプション:"
-echo "     ./shutsujin_departure.sh -s            # セットアップのみ（Claude手動起動）"
-echo "     ./shutsujin_departure.sh -t            # Windows Terminalタブ展開"
-echo "     ./shutsujin_departure.sh -shell bash   # bash用プロンプトで起動"
-echo "     ./shutsujin_departure.sh -shell zsh    # zsh用プロンプトで起動"
+echo "     ./scripts/shutsujin_departure.sh -s            # セットアップのみ（Claude手動起動）"
+echo "     ./scripts/shutsujin_departure.sh -t            # Windows Terminalタブ展開"
+echo "     ./scripts/shutsujin_departure.sh -shell bash   # bash用プロンプトで起動"
+echo "     ./scripts/shutsujin_departure.sh -shell zsh    # zsh用プロンプトで起動"
 echo ""
 echo "  ※ シェル設定は config/settings.yaml の shell: でも変更可能です"
 echo ""

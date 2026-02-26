@@ -1,0 +1,24 @@
+armies:
+  - id: armyA
+    session: armyA
+    # 以下は起動時（shutsujin_departure.sh）の初期配置。
+    # 運用中はペイン死亡でズレるため、scripts/resolve_pane.sh で動的解決せよ。
+    initial_shogun_pane: 0
+    initial_karo_pane: 1
+    initial_ashigaru_panes: [2, 3, 4, 5, 6, 7, 8, 9]
+    instruction_set: coc_trpg
+    dashboard: dashboard_armyA.md
+    queue_dir: queue/armyA
+
+  - id: armyB
+    session: armyB
+    initial_shogun_pane: 0
+    initial_karo_pane: 1
+    initial_ashigaru_panes: [2, 3, 4, 5, 6, 7, 8, 9]
+    instruction_set: original
+    dashboard: dashboard_armyB.md
+    queue_dir: queue/armyB
+
+taishogun:
+  session: taishogun
+  initial_pane: 0

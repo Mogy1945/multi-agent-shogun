@@ -21,9 +21,11 @@ demo_output/
 
 # Runtime data (generated during operation)
 output/
-queue/research/
-queue/tasks/
-queue/reports/
+
+# Queue runtime data (military-scoped)
+queue/armyA/
+queue/armyB/
+queue/taishogun_to_shogun.yaml
 
 # Memory MCP data (local to each installation)
 memory/
@@ -31,11 +33,15 @@ memory/
 # Project context (local to each installation, except README)
 context/
 !context/README.md
-queue/*.yaml
-dashboard.md
+
+# Dashboards (runtime, per-army)
+dashboard_armyA.md
+dashboard_armyB.md
+
+# Config runtime data
 config/projects.yaml
-status/
 config/settings.yaml
+status/
 logs/
 
 # Project details (contains client/confidential info)
