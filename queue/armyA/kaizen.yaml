@@ -1,0 +1,164 @@
+# ============================================================
+# kaizen.yaml — システム改善候補ログ（未処理のみ）
+# ============================================================
+# 将軍・家老・足軽の全員が、プロセスの問題に気づいたら記入する。
+# 将軍がプロジェクト区切り等のタイミングで棚卸しする。
+# 処理済み（fixed / wontfix）は kaizen_archive.yaml に移動。
+# 上限20件。超えたら古いものから強制アーカイブ。
+#
+# category: communication | workflow | quality | cost | other
+# status: open | fixed | wontfix
+
+entries:
+  - id: kz_armyA_009
+    source: 足軽A1+A2 (cmd_218 RACE-001)
+    timestamp: "2026-04-18"
+    category: workflow
+    status: fixed
+    description: "並列足軽が同一ファイルを上下分担する際の境界マーカー削除タイミング規約化。提案A/B両方採用完了。"
+    resolution:
+      - "2026-04-19 cmd_219: 提案B実装 scripts/parallel_split_concat.sh (split / split-by-marker / merge / status)"
+      - "2026-04-19 大将軍: 提案A 採用 (殿承認)。instructions/base.md §7 RACE-001 に『境界マーカー削除は両者完了確認後に最後に書いた方が削除』+ 物理分割推奨を追記"
+
+  - id: kz_armyA_010
+    source: 足軽A3 (cmd_225)
+    timestamp: "2026-04-20"
+    category: workflow
+    status: open
+    description: "並列Edit衝突時の flock+append 運用。A3がマイクロインタラクション実装中にA1/A2と同一CSSを編集し衝突。flockで原子性確保+appendで追記化する運用を検討したい。"
+    proposal: "scripts/parallel_split_concat.sh または新規 flock_append.sh を拡張し、並列足軽の追記を原子化"
+
+  - id: kz_armyA_011
+    source: 足軽A2 (cmd_225)
+    timestamp: "2026-04-20"
+    category: quality
+    status: open
+    description: ":root 重複定義の一本化運用。cmd_225で tcmd_218 battle 由来の :root と新規ルート :root が別個に存在し混乱。プロジェクト全体で :root を1箇所にする規約化が望ましい。"
+    proposal: "CSS入門部分に :root は index.html/最上位style.cssに1箇所のみ、という規約を追加。lint候補"
+
+  - id: kz_armyA_012
+    source: 家老A (cmd_225)
+    timestamp: "2026-04-20"
+    category: workflow
+    status: open
+    description: "情緒要望→トークン/レイヤー/アニメ/タイポ分解のアートディレクション設計書テンプレのskill化候補。cmd_225 art_direction.md が再利用価値高。"
+    proposal: "skill: art-direction-doc-from-vibe（殿の情緒要望を1枚ペラに分解するテンプレ）"
+
+  - id: kz_armyA_013
+    source: 家老A (cmd_225)
+    timestamp: "2026-04-20"
+    category: quality
+    status: open
+    description: "backdrop-filter ガラスカード統合レシピのskill化候補。テーブル磨りガラス実装が再利用可能。"
+    proposal: "skill: css-backdrop-filter-glass-kit（rgba+blur+border 統合スニペット）"
+
+  - id: kz_armyA_014
+    source: 家老A (cmd_225)
+    timestamp: "2026-04-20"
+    category: quality
+    status: open
+    description: "SVG SMIL ambient animationのskill化候補。星フリッカー/炎flicker実装が再利用可能、prefers-reduced-motion対応も含む。"
+    proposal: "skill: svg-smil-ambient-animation（星/炎の環境アニメSMILテンプレ）"
+
+  - id: kz_armyA_015
+    source: 家老A (cmd_225 hotfix PR#24)
+    timestamp: "2026-04-20"
+    category: quality
+    status: open
+    description: "CSS url() の相対パス解決起点はCSSファイル自身であってHTMLではない。cmd_225で stars.svg 404 を本番で初検出。ローカル検証時は同階層偶然動作で気づかなかった。検証チェックリストに追加したい。"
+    proposal: |
+      検証チェックリスト追加項目:
+      1. style.css 内の url(...) 相対パスは、style.cssの配置階層を基準に書く
+      2. 本番Vercel/相当の絶対パス環境でPlaywright検証を必ず1回走らせ、console/network errors 0件を確認
+      3. 可能なら開発時から `python -m http.server` 等でHTML/CSSを分離した階層で検証する
+
+  - id: kz_armyA_016
+    source: 家老A (cmd_229)
+    timestamp: "2026-04-21"
+    category: quality
+    status: open
+    description: "skill化候補: wcag-contrast-playwright-auditor。Playwright browser_evaluate内で alpha合成込みの WCAG 2.x比率計測を行う手順。cmd_229で 1.27→11.07 を実測で証明した手法。"
+    proposal: "skill: wcag-contrast-playwright-auditor（alpha合成込み WCAG2.x比率をPlaywright経由で計測）"
+
+  - id: kz_armyA_017
+    source: 家老A (cmd_229)
+    timestamp: "2026-04-21"
+    category: workflow
+    status: open
+    description: "既存テーマトークン再利用パターン。cmd_229で tcmd_225 夜キャンプ情緒の既存トークン (--glass-bg/--glass-border-strong/--text-primary) を流用し、新規色定義を増やさず整合維持できた。同じプロジェクト内の派生修正では既存トークン優先の運用を規約化したい。"
+    proposal: "修正着手前に :root + 既存トークン辞書を必ず一読し、新規定義の前に流用検討する手順をチェックリスト化"
+
+  - id: kz_armyA_018
+    source: 家老A (cmd_229)
+    timestamp: "2026-04-21"
+    category: workflow
+    status: open
+    description: "Playwright MCP経由でCSS編集後、ブラウザキャッシュで古いCSSが残り比率計測がBeforeのままになる問題。link[rel=stylesheet] href に ?bust=${Date.now()} を注入する cache-bust 手順を定型化したい。"
+    proposal: "Playwright browser_evaluate で 全link[rel=stylesheet].hrefに ?bust= を注入するワンライナーをスニペット化、検証手順に組み込む"
+
+  - id: kz_armyA_019
+    source: 家老A (cmd_232)
+    timestamp: "2026-04-22"
+    category: workflow
+    status: open
+    description: "Vercel preview URL が SSO Deployment Protection で 401 のため Playwright MCP 検証不能。cmd_232 では「ローカル http.server(18430) 並走検証 + 本番マージ後の curl/Playwright 再検証」の代替フローで対応した。この2段検証を preview 保護プロジェクトの標準フローに規約化したい。"
+    proposal: "preview URL SSO保護時の標準フロー: (1)local http.server で機能9項目検証 (2)main merge (3)本番URLで curl キーワード+Playwright 再検証 (4)両方OKで完遂報告。検証チェックリストに追加"
+
+  - id: kz_armyA_020
+    source: 家老A (cmd_232)
+    timestamp: "2026-04-22"
+    category: quality
+    status: open
+    description: "Playwright検証前にlocalStorage.clear()を励行する。ドメイン跨ぎ前回セッションの残存でログイン状態等が偽陽性になる事例。"
+    proposal: "Playwright検証フロー冒頭に browser_evaluate('localStorage.clear()') を標準1ステップ追加"
+
+  - id: kz_armyA_021
+    source: 家老A (cmd_232)
+    timestamp: "2026-04-22"
+    category: quality
+    status: open
+    description: "タスク仕様に記載のユーザーIDが実在しないケース(cmd_232 inmogi9287 タイポ→実在inmogi9631)。事前にFirestore実在確認を挟めば早期発見できた。"
+    proposal: "外部ID(Firestore/DB doc ID等)を使う検証タスクでは、着手前にID実在確認(Firestore読み取り/存在API等)を必須化"
+
+  - id: kz_armyA_022
+    source: 家老A (cmd_232)
+    timestamp: "2026-04-22"
+    category: workflow
+    status: open
+    description: "skill化候補: editorial-redesign-patch-applicator。3ファイル cp置換 + DOM ID互換チェック + Playwright 9項目 + preview SSO時のlocal+prod 2段検証テンプレ。cmd_232のフローがそのまま再利用可能。"
+    proposal: "skill: editorial-redesign-patch-applicator（デザインパッチ適用→検証→マージまで自律完走する将軍/家老級プレイブック）"
+
+  - id: kz_armyA_023
+    source: 家老A (cmd_234 → cmd_235 → cmd_237 → cmd_238)
+    timestamp: "2026-04-22"
+    category: quality
+    status: fixed
+    fixed_at: "2026-04-22"
+    fixed_by: cmd_241
+    fixed_artifact: skills/playwright-animation-pause/SKILL.md
+    priority: high
+    description: "skill化候補【4連続採用・強格上げ推奨】: playwright-animation-pause。CSS @keyframes 中間フレームを Playwright 経由でキャプチャする技法。element.getAnimations() で animation 取得→currentTime を任意時点に固定→スクショ→play() で復帰。cmd_234 ember-burst peak(35%) / cmd_235 star-pulse 0/25/50/75/100% / cmd_237 organic 4層複合 peak / cmd_238 太陽モード5アニメ複合 peak の4タスク連続で採用成功。本番 computed style との完全一致確認のデファクト手法となっており、汎用スキル化の優先度を最高レベルに格上げ推奨。"
+    proposal: "skill: playwright-animation-pause（getAnimations() で CSS アニメ中間フレーム固定→スクショ→復帰テンプレ。cmd_234/235/237/238 4連続採用実績、本番 computed 完全一致検証のデファクト手法、armyA ashigaru/karo の共通スキルへ格上げ強推奨）"
+
+  - id: kz_armyA_024
+    source: 家老A (cmd_238)
+    timestamp: "2026-04-22"
+    category: quality
+    status: fixed
+    fixed_at: "2026-04-22"
+    fixed_by: cmd_241
+    fixed_artifact: skills/css-crossfade-via-dual-pseudo/SKILL.md
+    description: "skill化候補: css-crossfade-via-dual-pseudo。モード切替の「唐突感」を消すため、疑似要素 or 別要素の opacity クロスフェード (1-2秒 ease-out) を採用する設計パターン。cmd_238 で星モード→太陽モードの遷移に sun-orb div を追加し opacity 0→1 で滑らかに切替、星側は opacity 1→0 でフェードアウト。単一要素の keyframes 差し替えでは唐突になる問題を、別レイヤを重ねてクロスフェードすることで解決する汎用手法。状態切替アニメーションの共通パターンとして再利用可能。"
+    proposal: "skill: css-crossfade-via-dual-pseudo（状態切替時に別要素/疑似要素を用意し opacity クロスフェードで唐突感を消す設計テンプレ。cmd_238 sun-orb 実装がそのまま流用可能）"
+
+  - id: kz_armyA_025
+    source: 家老A (cmd_240)
+    timestamp: "2026-04-22"
+    category: quality
+    status: fixed
+    fixed_at: "2026-04-22"
+    fixed_by: cmd_241
+    fixed_artifact: skills/css-keyframes-themed-via-vars/SKILL.md
+    description: "skill化候補: css-keyframes-themed-via-vars。CSS @keyframes 内に var(--*) を直接展開し、:root と .modifier-class で変数値だけを差替えることで、keyframes 不変・要素追加なしにモード切替を表現する設計パターン。cmd_240 で kz_armyA_024 (css-crossfade-via-dual-pseudo) からの縮退として採用、style.css -86行純減/位置0px差/ray全削除を達成。装飾構造が変わらず色/サイズ/透明度のみ変える用途では crossfade-dual-pseudo より圧倒的に低コストで、装飾構造が変わらない切替の第一選択。"
+    proposal: "skill: css-keyframes-themed-via-vars（:root集約+keyframes内var()展開+.class切替で変数差替のみで状態拡張、keyframes不変・DOM追加なしの最低コスト方式。cmd_240で-86行純減実証）"
+
