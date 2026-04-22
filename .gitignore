@@ -10,7 +10,12 @@ claude-shogun-orders.md
 test_output/
 
 # Generated skills (local development)
-skills/
+# Exception: プロジェクト成果物 skill の定義ファイル (SKILL.md / .md) は tracked 化
+skills/*
+!skills/*/
+skills/*/*
+!skills/*/SKILL.md
+!skills/*/*.md
 
 # Temporary files
 *.tmp
@@ -23,8 +28,15 @@ demo_output/
 output/
 
 # Queue runtime data (military-scoped)
-queue/armyA/
-queue/armyB/
+# Exception: kaizen.yaml / kaizen_archive.yaml / skill_candidates.md は組織知として tracked 化
+queue/armyA/*
+!queue/armyA/kaizen.yaml
+!queue/armyA/kaizen_archive.yaml
+!queue/armyA/skill_candidates.md
+queue/armyB/*
+!queue/armyB/kaizen.yaml
+!queue/armyB/kaizen_archive.yaml
+!queue/armyB/skill_candidates.md
 queue/taishogun_to_shogun.yaml
 
 # Memory MCP data (local to each installation)
@@ -50,3 +62,9 @@ projects/
 # Internal docs (operation logs, test plans, article drafts)
 docs/
 archive/
+
+# Generated screenshots and logs (task outputs)
+*.png
+*.log
+.playwright-mcp/
+plans/

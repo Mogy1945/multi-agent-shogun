@@ -1,0 +1,598 @@
+entries:
+  - id: KZ-154
+    timestamp: "2026-04-22T21:00:00Z"
+    reporter: karoB (cmd_B035 自律採択実績)
+    category: git_hygiene
+    priority: low
+    description: "cmd_B035 で KZ-151 (skills/ 管理外) と KZ-152 (queue/armyB/ kaizen.yaml 管理外) を .gitignore 方針A(exception 許可)で統合解決した際の意思決定記録。将来の .gitignore 改修判断時のリファレンスとして保管"
+    impact: "(1) skill 成果物 (SKILL.md / *.md) が組織知として git 履歴に永続化され、マシン跨ぎ/エージェント跨ぎで参照可能に (2) kaizen.yaml / kaizen_archive.yaml / skill_candidates.md が -f なしで標準 staging 可能に = KZ-140 streak 評価の曖昧さ解消 (3) runtime data (shogun_to_karo.yaml / tasks / reports) は ignore 継続で per-machine 独立性維持 (4) cmd_B033 で導入した force-add 運用が不要化"
+    status: resolved
+    resolved_at: "2026-04-22T21:00:00Z"
+    resolved_by: "本 KZ 自体が cmd_B035 の採択実績記録であり、起票と同時に resolved"
+    decision_record:
+      option_a_selected: ".gitignore exception 許可 (skills/* + !skills/*/SKILL.md + !skills/*/*.md / queue/army{A,B}/* + !kaizen.yaml + !kaizen_archive.yaml + !skill_candidates.md)"
+      option_b_rejected: "ファイル再配置 (meta/armyB_kaizen.yaml 等) — pane_watchdog/archive_done/health_check 等のスクリプトで queue/armyB/ パス参照が多発、影響範囲過大"
+      option_c_rejected: "現状維持 — KZ-151/152 未解決、cmd_B033 force-add 運用恒久化で運用不便"
+      selection_criteria:
+        - "最少差分: .gitignore 数行追加のみで完結"
+        - "可逆性: exception 行削除で即戻せる"
+        - "影響範囲: scripts/ 配下の grep で影響ゼロ確認済"
+        - "組織知の git 永続化: skill 設計・kaizen 履歴が履歴追跡可能"
+    references:
+      - "KZ-151 (skills/ 管理外) → 本件で完全 resolved"
+      - "KZ-152 (queue/armyB/ kaizen.yaml 管理外) → 本件で完全 resolved"
+      - "KZ-140 (選択的 staging streak) → 評価基準の曖昧さ解消"
+      - "cmd_B033 force-add (skills/SKILL.md) → 本件以降は不要"
+
+  - id: KZ-152
+    timestamp: "2026-04-22T20:30:00Z"
+    reporter: karoB (cmd_B034 anomaly1)
+    category: git_hygiene
+    priority: medium
+    description: "cmd_B034 手順5『kaizen.yaml を staging』実行時、queue/armyB/ は .gitignore L27 (queue/armyB/) により git 管理外であることが判明。kaizen.yaml/shogun_to_karo.yaml/tasks/*/reports/* 全てが tracked にならず、KZ-140 の『選択的 staging 1ファイル厳守』原則で評価できない。設計意図は runtime data (per-machine) だが、kaizen.yaml は組織知として git 管理すべき資産であり、同じ queue/armyB/ 配下に混在していることが問題の根源"
+    impact: "(1) kaizen 履歴が git 共有されず、他マシン/他エージェント/コンパクション後からは Memory MCP か dashboard 経由でしか参照できない (2) KZ-140 streak の評価基準が『staging 1ファイル』だが、kaizen.yaml はそもそも staging 不可でカウント外になる曖昧さ (3) shogun_to_karo.yaml / tasks / reports は runtime で管理外が妥当だが、kaizen.yaml だけは性格が異なる (4) KZ-151 (skills/) と同系統の .gitignore 設計議論"
+    proposed_fix: |
+      (a) kaizen.yaml の配置を queue/armyB/ 外に移動: 例 `meta/armyB_kaizen.yaml` or `kaizen/armyB.yaml`
+      (b) .gitignore の queue/armyB/ を精緻化: `queue/armyB/*` + `!queue/armyB/kaizen.yaml` で kaizen.yaml のみ tracked 化
+      (c) 現状維持: kaizen.yaml は各マシンローカルの組織知として運用、共有は Memory MCP + dashboard 経由で継続
+      → 殿判断事項。KZ-151 (.gitignore skills/) と併せて .gitignore 全体方針レビューの一部として扱う
+    status: resolved
+    resolved_at: "2026-04-22T21:00:00Z"
+    resolved_by: "cmd_B035 commit (karoB 自律)"
+    resolution_note: "2026-04-22 cmd_B035 で .gitignore 方針A(exception許可)統合採択。skills/*/SKILL.md と queue/armyB/{kaizen.yaml,kaizen_archive.yaml,skill_candidates.md} が -f なしで staging 可能になり、組織知が git 履歴に残る運用確立"
+    related:
+      - "KZ-151 (skills/ 管理外問題) と同系統、.gitignore 設計方針レビューの一部"
+      - "KZ-140 (選択的 staging 12連続) の評価基準との整合確認要"
+      - "KZ-154 (cmd_B035 adoption 実績) に採択方針A の意思決定根拠を記録"
+
+  - id: KZ-153
+    timestamp: "2026-04-22T20:30:00Z"
+    reporter: karoB (cmd_B034 anomaly2)
+    category: working_tree_hygiene
+    priority: low
+    description: "cmd_B034 で instructions/karo.md を編集した際、git diff HEAD が +293/-577 という大差分を示した。原因調査の結果、HEAD (cmd_B029 以前のコミット) には CoC TRPG 専門版 (686行) が記録されていたが、working tree は既に短縮版 (402行) に置換されており、長年にわたり未コミット保管されていたことが判明。本 cmd_B034 commit でこの未コミット差分 + Appendix B 追記が合算解消。実害は無し (tcmd_233 活動残滓と推定)、scope 超過ではあるが working tree 健全化の副次効果あり"
+    impact: "(1) working tree と HEAD の長期乖離は compaction/ /clear/ マシン移行時に未コミット変更が失われるリスク源 (2) 同種の未コミット差分が他ファイル (instructions/*.md, CLAUDE.md, scripts/*, dashboard_*.md) にも残存している可能性 (3) cmd 実行時の diff 測定が意図外の履歴差分を含むため KZ-140 streak 評価や PR 粒度管理が曇る"
+    proposed_fix: |
+      (a) 定期的な `git status` + `git diff --stat HEAD` による未コミット差分監視を運用に組み込む
+      (b) セッション開始時 or /clear 復帰時の自己点検項目に『working tree vs HEAD 乖離チェック』を追加 (instructions/karo.md + shogun.md)
+      (c) 大規模組織改編タスク (tcmd_233 等) 完了直後に working tree の全体健全性を確認する『清算フェーズ』を入れる
+      (d) 本件で karo.md は健全化済。他ファイルは次回触るタイミングで発覚する可能性あり、都度検査で足りると判断
+    status: resolved
+    resolved_at: "2026-04-22T20:15:00Z"
+    resolved_by: "cmd_B034 commit d056cfc97f8aa36e1 で副次的に working tree 健全化"
+    resolution_note: "karo.md は健全化完了。他ファイルの未コミット差分残存は次回タスクで都度発見・整理。運用ルール追加 (b)(c) は将来の kaizen (KZ-154+) で検討可能、本件単独では close"
+    related:
+      - "tcmd_233 / cmd_B029 (組織改編時の活動残滓と推定)"
+      - "KZ-140 (選択的 staging streak 評価に影響)"
+
+  - id: KZ-150
+    timestamp: "2026-04-22T19:50:00Z"
+    reporter: karoB (cmd_B032 副産物)
+    category: infrastructure
+    priority: high
+    description: "cmd_B032 実行で shogun-web の server.js は起動モード分岐 (L133-136 production / L140-152 dev Vite middleware) を持つが、現行は Vite dev mode 稼働中。cmd_B031 で build した dist/ hashed assets (office-Ccd1uMss.js 1010KB 等) は dev mode では配信されず 404。一方 public/ 配下は Vite middleware が on-the-fly で変換配信しており cmd_B031 merge 反映済。どちらを『正規運用モード』とするか、及び build→dist の意義付けが不明確"
+    impact: "(1) cmd_B031/B032 手順に『新dist 配信確認』が含まれるが dev mode では満たせない → 検証基準が曖昧 (2) build は実行するが dev mode では未使用 → 工数無駄 (3) production mode に切り替える場合は `NODE_ENV=production` 設定やオプション追加手順が必要だが未整備 (4) dev mode のまま運用するなら build ステップを手順から削除すべき"
+    proposed_fix: |
+      (a) 殿に『shogun-web は dev mode 常用 or production mode 切替』の方針判断を仰ぐ
+      (b) dev mode 継続 → cmd_B031 相当タスクの build ステップを削除、merge のみで反映完了とする
+      (c) production mode 切替 → server.js 起動フラグ整理 + NODE_ENV=production node server.js + dist 配信確認手順整備。再起動手順に --prod オプションを組み込む
+      (d) 両モード併存 → init script で分岐する運用 (dev/prod toggle 設定ファイル)
+    status: resolved
+    resolved_at: "2026-04-22T19:55:00Z"
+    resolution: "大将軍A案(dev mode 継続)採択。殿『数秒ダウンタイム許容・リロードだけでOK』裁可 + public/ 即反映により、dev mode でも体感上 prod 相当の運用が成立することを確認。将来の prod 切替オプションは cmd_B033 で SKILL.md Appendix B (B.1-B.5) に温存 (commit 79639ef)。tcmd_239 クラスタでクローズ"
+
+  - id: KZ-151
+    timestamp: "2026-04-22T19:50:00Z"
+    reporter: ashigaruB1 (cmd_B031 副産物) + karoB
+    category: git_hygiene
+    priority: medium
+    description: "cmd_B031 で作成した skills/office-layout-symmetric-scaffolding/SKILL.md (258行) と reports/tcmd_239/build.log が、multi-agent-shogun/.gitignore L13 (skills/) と L56 (*.log) により git 管理外になっている。結果: (1) SubAgent が SKILL.md を作成したが `git add` 自体できない (2) KZ-140 の『選択的 staging』が評価できない (3) skill 資産が git 履歴に残らず、他マシン/他エージェントから参照不可"
+    impact: "skill 設計書は組織知として git で共有すべきだが、現行 .gitignore により永続化されない。cmd_B031 成果 (SKILL.md 258行) は SubAgent ワークスペース内にあるが、次回 /clear やマシン移行で喪失リスク"
+    proposed_fix: |
+      (a) .gitignore L13 (skills/) の意図確認: おそらく claude-code のユーザ個別 skills を除外する意図だが、プロジェクト固有の skills/ は別扱いすべき
+      (b) .gitignore 修正案: `skills/` → `.claude/skills/` に限定、もしくは `!skills/office-layout-symmetric-scaffolding/` で明示的 include
+      (c) build.log 等のログは reports/ 配下に置き、reports/ は別途 .gitignore でルール設定
+      (d) 殿に .gitignore 方針確認後 karoB が 1タスクで修正
+    status: resolved
+    resolved_at: "2026-04-22T21:00:00Z"
+    resolved_by: "cmd_B035 commit (karoB 自律)"
+    resolution_note: "2026-04-22 cmd_B035 で .gitignore 方針A(exception許可)統合採択。skills/* + !skills/*/SKILL.md + !skills/*/*.md のパターンで SKILL.md と skill 定義系 .md は -f なしで staging 可能に。SKILL.md 以外の生成物 (build.log, *.png 等) は ignore 継続で安全性維持。cmd_B033 の partial_resolved を完全 resolved に昇格"
+    history:
+      - "2026-04-22T20:00:00Z (cmd_B033): SKILL.md を `git add -f` force-add → commit 79639ef5d で単体救済 (partial_resolved)"
+      - "2026-04-22T21:00:00Z (cmd_B035): .gitignore exception で恒久解決 (resolved)。新規 skill 追加時も force-add 不要"
+    related:
+      - "KZ-152 (queue/armyB/ 管理外) と統合解決"
+      - "KZ-154 (cmd_B035 adoption 実績)"
+
+  - id: KZ-149
+    timestamp: "2026-04-22T18:15:00Z"
+    reporter: ashigaruB1 (cmd_B030 副産物)
+    category: infrastructure
+    priority: medium
+    description: "shogun-web リポジトリは GitHub remote 未設定のためローカルのみで管理されており、cmd_B030 で commit f59b80b は作成したが PR 作成不可。一方 multi-agent-shogun 本体は cmd_B029 で Mogy1945/multi-agent-shogun にフォーク化して PR→merge 運用が確立。shogun-web も同様に Mogy1945 配下にフォーク化することで: (1) PR ベースのレビュー運用統一 (2) 変更履歴の GitHub 可視化 (3) 複数マシン/エージェント間での同期 (4) revert/rollback の簡易化 が可能になる"
+    impact: "現状 shogun-web 改修は push 先がないためローカル commit 止まり。複数マシンや殿環境での反映はファイル同期に頼るしかなく、バージョン管理が不透明。大規模改修 (cmd_B030 の 33 files/+1556-1865) で特に顕在化"
+    proposed_fix: |
+      (a) `gh repo create Mogy1945/shogun-web --private --source=/home/hatan/shogun-web --remote=origin --push` で fork 作成
+      (b) armyc-migration ブランチを push → PR 作成
+      (c) squash merge で main 反映
+      (d) 以降の shogun-web 改修は multi-agent-shogun と同パターン (feature branch → PR → squash merge)
+      (e) 本番反映は殿が dist/ ファイルを静的配信サーバに配置するタイミングで実施
+    status: wontfix
+    closed_at: "2026-04-22T19:50:00Z"
+    close_reason: "殿裁可(cmd_B031 2026-04-22)で『shogun-web はローカル運用継続、GitHub remote 不要』と確定。fork 運用化の動機消失。cmd_B031 で main ローカル merge (HEAD 66eeda2 --no-ff) が完遂し、local 単独運用でも運用回せることが実証された。KZ-149 wontfix クローズ。将来殿が方針変更した場合は新規 KZ 起票"
+
+  - id: KZ-148
+    timestamp: "2026-04-22T07:43:00Z"
+    reporter: ashigaruB1 (cmd_B029 副産物)
+    category: automation
+    priority: medium
+    description: "cmd_B029 で scripts/pane_watchdog.sh / scripts/health_check.sh 等の AGENTS 配列を手動同期した。config/armies.yaml を正 (single source of truth) とし、スクリプト側はループで動的生成できるはず。現状は手動同期しないとドリフトが発生し、軍D追加時にも再度全スクリプト編集が必要"
+    impact: "組織再編の度に複数スクリプトで AGENTS 配列を同期する手間とドリフトリスク。N-軍化の障害"
+    proposed_fix: "(a) config/armies.yaml から python/yq で armies[*].id を抽出するヘルパ関数 get_armies_from_config() を scripts/common.sh に新設 (b) pane_watchdog.sh / health_check.sh / task_stats.sh 等の AGENTS 配列を get_armies_from_config + ループ生成に置換 (c) CI で『AGENTS 配列が armies.yaml と一致する』テスト追加も選択肢"
+    status: open
+    action: "cmd_B029 完遂直後は殿判断待ち。次回軍D追加タスク or pane_watchdog.sh 改修タスク発令時に合流。KZ-147 の shutsujin_departure N-軍化と同一方針で統合採用可。KZ-138ルール: 仮期限 2026-05-22 (1ヶ月) までに(a)別タスク起票 (b)deferred降格 のいずれかを決定要"
+
+  - id: KZ-147
+    timestamp: "2026-04-22T07:43:00Z"
+    reporter: ashigaruB1 (cmd_B029 副産物)
+    category: refactor
+    priority: medium
+    description: "scripts/shutsujin_departure.sh 内の init_shinobi_queues / setup_shinobi / launch_claude_shinobi は cmd_B029 で stub 化したが、将来軍D以降を追加する際は同種の手動拡張が必要。`armies=(A B C D...)` ループに完全統一し、軍ごとの stub を不要にする再構成が望ましい"
+    impact: "N-軍化した際、新軍追加の度に shutsujin_departure.sh に setup_XXX / launch_claude_XXX / init_XXX_queues を新設する必要がある。現状は『stub を残す』という妥協で動いているが恒久対応ではない"
+    proposed_fix: "(a) init_army_queues(army_id) 関数を1つ定義し、全軍を for ループで init (b) setup_army(army_id) / launch_claude(army_id) 系も同パターン化 (c) stub 関数は削除 (d) config/armies.yaml の armies[*] をループ駆動源にする (KZ-148 と統合可能)"
+    status: open
+    action: "cmd_B029 完遂直後は殿判断待ち。KZ-148 と統合して『shutsujin_departure.sh N-軍対応』タスクとして起票する方向。KZ-138ルール: 仮期限 2026-05-22 (1ヶ月)"
+
+  - id: KZ-146
+    timestamp: "2026-04-22T07:43:00Z"
+    reporter: ashigaruB1 (cmd_B029 副産物)
+    category: dsl
+    priority: low
+    description: "cmd_B029 で scripts/resolve_pane.sh に shinobicho/hanzo/sasuke/kotaro の deprecation 分岐を hardcode 追加した。今後組織改編のたびに毎回 hardcode 編集するのは非効率。宣言的な deprecated_ids.yaml (例: `hanzo: ashigaruC1, sasuke: ashigaruC2, kotaro: ashigaruC3, shinobicho: shogunC`) のような mapping を外部化し、resolve_pane.sh はロードして回すだけにする"
+    impact: "組織再編の度に resolve_pane.sh を手動編集する工数とミスリスク。DSL 化すれば宣言1行で対応可能"
+    proposed_fix: "(a) scripts/deprecated_ids.yaml 新設、old_id → new_id マッピング宣言 (b) resolve_pane.sh は yq/python で読み込み → deprecated id を検出したら new_id に誘導 + warn を出す実装に置換 (c) 将来の組織改編は deprecated_ids.yaml に1行追加するだけ"
+    status: open
+    action: "low priority。次回 scripts/resolve_pane.sh を触るタスク (組織改編 or ID ルール変更) と合流予定。KZ-138ルール: 仮期限 2026-05-22 (1ヶ月)"
+
+  - id: KZ-145
+    timestamp: "2026-04-22T06:50:00Z"
+    reporter: ashigaruB1 (cmd_B028 / tcmd_231 副産物)
+    category: quality_assurance
+    priority: high
+    description: "tcmd_230 で13シナリオのモバイルスキップ検証を行ったが、『taunt/armorBreak付与敵を引かない経路欠落』で false negative『再現せず』判定 → 殿が PC Chrome DevTools Console で決定的例外 (render.js:260 statusMap[key]=undefined) を取得し覆した。原因は state.js createInitialStatus() の全21キーと render.js statusMap の登録14キーの差分 (bleed/slow/stun/confusion/taunt/armorBreak/reviveUsed の7キー未登録) が effects.js L533/L559 で付与され次ターン updateStatusTags で TypeError を誘発するが、検証シナリオでそれらの状態異常が付与される経路を組み合わせで網羅していなかった。『再現しないバグ』の典型検証漏れパターン"
+    impact: "状態異常系や運依存付与の UI バグは mobile_skip_matrix のような平面網羅では false negative を招く。本件は殿の実機操作+DevTools で救われたが、家老側で気づけないと本番で停止バグが残留する。また silent error (console.error だけ出て機能停止しない) は通常プレイ経路では表面化しにくく、スキップ固着として現れて初めて露見した"
+    proposed_fix: |
+      『状態異常網羅検証チェックリスト』を新設し、状態異常系や map[key] 参照を含むタスクで必須化する:
+      (1) state.js createInitialStatus() で定義されている全キーをリスト化
+      (2) render.js statusMap に対応する label/className がある事を CI or lint で verify (キー差分をテストで検出)
+      (3) effects.js / ai.js / continuous.js で付与される status effect を grep で洗い出し、検証シナリオに必須で含める
+      (4) 付与経路が運依存 (敵のスキル選択) の場合、Playwright で state 直書きで強制付与するシナリオを追加
+      (5) silent error (console.error だけ出て機能停止しない) の検証は通常プレイ経路でも同シナリオを回す
+    status: adopted
+    adopted_at: '2026-04-22T20:20:00Z'
+    adopted_by: karoB (cmd_B034)
+    adopted_location: 'instructions/karo.md 検証ツール選定ルール R.3 (状態異常網羅検証チェックリスト)'
+    action: "camp_schedule 次期バトルUI系タスクで instructions/ashigaru.md または templates/ に『状態異常網羅検証チェックリスト』を追加。KZ-143 (browser stats判定樹) / KZ-144 (Playwright MCP UA制約) と併せて instructions/karo.md『検証ツール選定ルール』セクションに統合可能。KZ-138ルール: 仮期限2026-05-22 (1ヶ月) までに(a)別タスク起票 (b)templates/ 新設 (c)deferred 降格 のいずれかを決定要"
+    snapshot_20260422:
+      state_keys_all_21: [poison, paralyze, blind, oil, atkUp, defUp, burn, wet, cold, freeze, activate, iai, iaiBroken, curse, bleed, slow, stun, confusion, taunt, armorBreak, reviveUsed]
+      rendermap_registered_14: [poison, paralyze, blind, oil, atkUp, defUp, burn, wet, cold, freeze, activate, iai, iaiBroken, curse]
+      missing_in_rendermap_7: [bleed, slow, stun, confusion, taunt, armorBreak, reviveUsed]
+      defense_status: "KZ-145 の ashigaruB1 実装 render.js L258 ガード (`if (!statusMap[key]) continue;`) で防衛済。将来的な Option B (statusMap完全補完 + style.css class追加) は別タスク候補"
+    related_cmds: ["cmd_B027 (tcmd_230 検証漏れ発生)", "cmd_B028 (tcmd_231 hotfix)"]
+
+  - id: KZ-144
+    timestamp: "2026-04-22T18:45:00Z"
+    reporter: ashigaruB1 (cmd_B027 副産物)
+    category: tooling_limitation
+    priority: medium
+    description: "Playwright MCP は User-Agent 書き換え不可 (Linux Chrome UA 固定) のため、実 Safari / Firefox / 実 Android Chrome 特有のバグ (touch event hijacking / viewport specific CSS bug / WebKit固有のJS実行順序 等) を再現する必要があるタスクで物理的制約に当たる。cmd_B027 で殿指摘『モバイルで動かない』bugを検証したが、UA 固定のため実 Safari 再現は不可能 → viewport + TouchEvent dispatch + 状態異常マトリクス網羅で代替証明に留まった。家老がタスク発令時に『UA 依存性の高いbug』かどうか事前判断できる基準が instructions にないと、足軽が Playwright で時間を溶かしてから気づく"
+    impact: "モバイル/ブラウザ固有バグのタスク発令時、Playwright MCP の制約を知らずに『実UA で検証せよ』と指示すると達成不可能な要求になる。代替策 (viewport網羅 / 殿実機デバッグ依頼 / BrowserStack 等) への切替判断が遅れる"
+    proposed_fix: "instructions/base.md または instructions/karo.md に『Playwright MCP の既知制約と代替策』セクションを新設。(1) UA 固定制約 → viewport + TouchEvent + 状態網羅で代替、実UA必要時は殿実機 Web Inspector 依頼 (2) networkidle 経由の page.goto は Firestore/analytics で never idle → domcontentloaded に固定推奨 (3) 別ポート http.server で Module Cache 回避 (cmd_B022 の学び) を統合して Playwright-MCP-制約マニュアル化"
+    status: adopted
+    adopted_at: '2026-04-22T20:20:00Z'
+    adopted_by: karoB (cmd_B034)
+    adopted_location: 'instructions/karo.md 検証ツール選定ルール R.2 (Playwright MCP 既知制約と代替策)'
+    action: "KZ-143 (browser stats 判定樹) と統合可能。2026-05-22 までに instructions/karo.md『検証ツール選定ルール』セクションとして新設。KZ-138ルール: 仮期限2026-05-22 (1ヶ月)"
+
+  - id: KZ-143
+    timestamp: "2026-04-22T15:00:00Z"
+    reporter: karoB (cmd_B026 救出フェーズ観測)
+    category: tooling
+    priority: medium
+    description: "cmd_B026 で SubAgent が battle_sim.mjs (Playwright persistent context 経由30x2勝率統計) を残したが、(1) page.goto networkidle が Firestore/analytics で never idle になりタイムアウト (2) domcontentloaded に緩めても MutationObserver 検知した battleEnded が myHp/enemyHp 1 残しで timeout=true になり完走しない。結局 60戦で ~15分 タイムアウト地獄。KZ-142 の『bit-for-bit vs 統計許容窓』判定樹とは別に、『browser-based 30x2 自体が実行コスト/信頼性ともに割に合わない』という上位の判断が必要"
+    impact: "family 系 battle タスクで毎回 30x2 Playwright stats を要求すると 10-15分待ちが発生し、Opus コスト/殿待機時間を圧迫。しかも失敗率高い。代替の単体正確性テスト (cmd_B026 で6/6 PASS + tie-break 1000回) の方が速くて信頼性も高い場合がある"
+    proposed_fix: "instructions/karo.md に『検証コスト判断ルール』を追記: (a) 純粋関数ロジックの勝率差は単体テストで代替可 (b) 30x2 browser stats は『勝敗判定/報酬ロジック自体を触る』タスクでのみ要求 (c) setTimeout/async 経路は関数本体diff=0 + 単体テスト + 殿手動smoke test の三層で担保。browser stats はオプション。KZ-142 と併せて『等価性証明の選択肢マトリクス』を明文化"
+    status: adopted
+    adopted_at: '2026-04-22T20:20:00Z'
+    adopted_by: karoB (cmd_B034)
+    adopted_location: 'instructions/karo.md 検証ツール選定ルール R.1 (等価性証明マトリクス)'
+    action: "KZ-142 と統合して 2026-05-22 までに instructions/karo.md 改修。単独採用なら『browser_stats_attempted: <bool>』フィールドをタスク完了YAMLテンプレに追加し、試行したが断念した場合も明示する運用に。KZ-138ルール: 仮期限2026-05-22 (1ヶ月)"
+
+  - id: KZ-142
+    timestamp: "2026-04-21T00:35:00Z"
+    reporter: ashigaruB1 (cmd_B025 副産物)
+    category: process_improvement
+    priority: medium
+    description: "『ロジック非改変の証明をどの粒度で要求するか』の判断基準を明文化する。(1) 関数本体 diff=0 — 常に必須 (2) Math.random seed 注入での bit-for-bit 完全一致 — setTimeout/MutationObserver の順序非決定性が絡むと物理的に不可能 (3) 統計的 ±10% 許容 — 実務上はこれで十分。cmd_B025 では同一 seed/設定の runA vs runB でも 1/30 程度しか一致せず bit-for-bit 要求は物理的に達成不可能と判明。『ブラウザ非同期タイマーが絡むバトル』では (1)+(3) の組合せを採用し、(2) を無理に要求しない運用を家老側で判断できる基準が必要"
+    impact: "タスク発令時に bit-for-bit を前提条件にすると達成不可能な要求を足軽に押し付け、時間ロス・無理なエスカレーションを招く。cmd_B024 は演出wait のみなので bit-for-bit 達成できたが、cmd_B025 は turn 順序依存が入り不可能になった。判断基準がないと家老/将軍が再現性を誤解する"
+    proposed_fix: "instructions/karo.md (or ashigaru.md) に『非改変証明の3段階基準』を追記: (1) 関数本体 diff=0 必須 (2) setTimeout/async が絡まない純粋関数路は bit-for-bit 要求可 (3) ブラウザ非同期タイマー/MutationObserver/Firestore 等が絡む場合は統計±10% 窓 + 関数本体diff=0 を代替許容。ルールとしてタスク発令時に家老が対象範囲を判定して『bit-for-bit 要求可能か』を明示"
+    status: open
+    action: "cmd_B025 直後は殿緊急不具合対応を優先して未処理。次回 idle 時に家老B主導で instructions/karo.md『タスク分解の五つの問い』セクションに追記。もしくは base.md の共通プロトコルに昇格。KZ-138ルール: 仮期限2026-05-21 (1ヶ月) までに action 決定要"
+
+  - id: KZ-141
+    timestamp: "2026-04-20T23:45:00Z"
+    reporter: ashigaruB1 (cmd_B024 副産物)
+    category: feature_expansion
+    priority: low
+    description: "cmd_B024 で新設した battle/assets/js/battle/timing.js (63行SSoT) を battle/ 以外の他プレイ系機能 (ガチャ演出スキップ、ターンログ一括表示、その他 UX スピード制御) にも流用可能な汎用モジュールへ拡張する余地あり。また SKIP_MULTIPLIER を localStorage で永続化し『常時 2x スピード』のようなユーザー設定化も可能"
+    impact: "timing.js が battle/ 配下に閉じたままだとガチャ/ダンジョン等で同種の wrap パターンを重複実装することになる。SSoT一般化で保守性向上"
+    proposed_fix: "(a) timing.js を battle/ → assets/js/common/ に昇格 (b) localStorage 永続化で常時 2x 設定 (c) ガチャ/ダンジョンの既存 setTimeout を getDelay wrap 置換"
+    status: open
+    action: "low priority のため cmd_B024 直後の実施は不要。次回 camp_battle_game の UX 拡張タスクと合流 or delay-wrap-speed-control スキル採用後に派生タスクとして起票。KZ-138ルール: open 滞留 → 四半期棚卸しで再評価"
+
+  - id: KZ-140
+    timestamp: "2026-04-19T10:10:00Z"
+    reporter: ashigaruB1 (cmd_B022 副産物)
+    category: workflow
+    priority: medium
+    description: "並列軍（軍A/軍Bが同一リポジトリを同時操作）運用時、足軽の working tree に他軍の未コミット変更が混入する RACE が発生する。cmd_B022 実行中に tcmd_223 (軍A) の未コミット変更（ルート index.html / assets/ / 新規 assets/icons/）が working tree に混入。git add battle/ の選択的 staging で切り離せたが、全 add していれば誤って軍A変更をPR#19に含めていた"
+    impact: "並列タスクのPRに他軍変更が混入 → dashboard混乱 + merge conflict + 責任境界曖昧化。CI失敗や本番反映ずれの原因にも"
+    proposed_fix: "(a) instructions/ashigaru.md に『commit 前の最終 diff --cached --stat スコープ確認』『working tree 他軍汚染検知』を追記（KZ-136 の事前チェックを拡張）。(b) 家老レベルで並列 tcmd の working tree 分離方針（git worktree / 別クローン）を検討"
+    status: accepted
+    accepted_deadline: "2026-05-19"
+    action: "優先実施: (a) instructions/ashigaru.md に追記（KZ-136セクションに他軍混入時対処を併記、または新節『並列タスク時のworking tree衛生』を新設）。(b) は家老B/将軍Bで別途検討。次回 idle 時に家老B主導で instructions/ashigaru.md 改修 → dashboard自律改善ログ記録。KZ-138ルール: 仮期限2026-05-19まで。"
+
+  - id: KZ-139
+    timestamp: "2026-04-19T10:10:00Z"
+    reporter: ashigaruB1 (cmd_B022 発見)
+    category: feature_gap
+    priority: medium
+    description: "cmd_B022 で battle/ 配下の自前フィードバック実装を撤去した結果、現状 battle/ 側のフィードバック経路がゼロ。タスクYAML前提だった Google Form iframe は実リポジトリに存在せず（コードにコメント記述のみ、実 iframe タグ・Google Form URL ともに無し）"
+    impact: "battle/ ページからユーザーがフィードバックを送る手段が消滅。CS/UX フィードバック収集が止まる"
+    proposed_fix: "Google Form を新規作成 or 既存フォームを流用し、battle/index.html 末尾に <iframe src='https://docs.google.com/forms/...'> として埋め込む軽微タスク。Linear design tokens 整合のため section wrapper は既存パターン踏襲。殿に Form URL 提供依頼 or 新規作成権限確認要"
+    status: closed
+    closed_at: "2026-04-19T18:45:00Z"
+    resolution: "cmd_B023 (tcmd_224, PR#20 squash 1ccc141, 2026-04-19) で恒久解消。殿より Form URL 提供 (https://docs.google.com/forms/d/e/1FAIpQLSevcGNbUHMwXBVTvpsJsNFFDujWAUMZNVAL2j89REOpU0mLRA/viewform) → battle/index.html 末尾に details/summary + iframe ブロック新設 (+22行)、battle/assets/css/style.css に Linear 準拠 CSS 追加 (+85行、旧66行ネオン調を廃棄して achromatic + indigo accent で再設計)。3 viewport (PC/iPhone SE/iPhone 12) Playwright 検証・Vercel 本番反映・console 0 を確認。"
+    timestamp: "2026-04-19T01:25:32Z"
+    reporter: ashigaruB1 (cmd_B020 副産物)
+    category: workflow
+    description: "kaizen.yaml エントリの『accepted』ステータスが長期滞留する傾向がある。cmd_B020 棚卸し時点で accepted 6件が残存、平均滞留期間が月単位。accepted は『採用方針は決まったが実装待ち』の状態だが、実装タスク起票まで時間がかかるため deferred と区別が曖昧になる。"
+    impact: "accepted のまま放置される kaizen は情報鮮度が落ち、次回棚卸しコストを増やす。放置すると kaizen.yaml が未整理の TODO リスト化して大規模棚卸しが再発する"
+    proposed_fix: "instructions/karo.md に『accepted 期限ルール』を追記: 採用決定後1ヶ月以内に (a)別タスク起票 (b)skill_candidates 登録 (c)deferred 降格 のいずれかを action として決める。累積 accepted が5件を超えたら家老主導で棚卸し起票必須。"
+    status: adopted
+    action: "将軍B裁定 (2026-04-19) で最優先採用。instructions/karo.md『タスク分解の五つの問い > accepted 期限ルール（必須）』として追記完了。既存 accepted 6件 (KZ-105/107/109/114/117/130) に一括仮期限 accepted_deadline: 2026-05-19 付与済。期限到来時に各件で action 決定要。"
+
+  - id: KZ-137
+    timestamp: "2026-04-19T01:10:25Z"
+    reporter: ashigaruB1 (cmd_B021 副産物)
+    category: autonomy
+    description: "タスクYAML記述のUI用語が実アプリと乖離していた場合、足軽はStep2 (before撮影) 時点で実UIに合わせて改善対象を自律スコープ調整する権限がある旨、instructions/ashigaru.mdの『自律判断ルール』に追記する。cmd_B021で『詳細モーダル』が実在せず option-button + summaryModal に切替が必要だった事例で顕在化。"
+    impact: "起票者が実UIを完全把握できないケースで足軽が硬直的に原文に従うと価値が出ない。今回はashigaruB1が自律で切替え成功したが、将来の足軽が迷わぬよう明文化が必要。"
+    proposed_fix: "instructions/ashigaru.md『自律判断ルール』に『タスク記述と実UI乖離時は実態優先でスコープ調整し、observation.gap_analysisに根拠を残せ』を追記。"
+    status: adopted
+    action: "cmd_B020 (ashigaruB1 棚卸し) で採用。instructions/ashigaru.md『自律判断ルール > タスクYAML記述と実UIの乖離時（自律スコープ調整）』として追記完了（手順3段階 + cmd_B021事例の出典付き）。"
+
+  - id: KZ-136
+    timestamp: "2026-04-19T00:00:00"
+    reporter: 家老B (cmd_B019 副産物)
+    category: workflow
+    description: "足軽/家老 commit前に git status と .gitignore の事前チェックを標準化する。cmd_B019 で queue/armyB/kaizen.yaml + instructions/ashigaru.md + skills/playwright-local-html-preview/SKILL.md の3点修正後、queue/と skills/ が .gitignore 対象、instructions/ashigaru.md は既存 unstaged (-460/+95) と混在しており commit を保留する判断に至った。事前に把握していればスコープ分割・大将軍エスカレーションを即断できた。"
+    impact: "commit段階で毎回 .gitignore 対象・unstaged 混在を発見して手戻り・保留が発生する"
+    proposed_fix: "instructions/ashigaru.md の commit セクション冒頭に『commit前に (1) git status で自分のスコープ外 unstaged を確認、(2) git check-ignore <files> で .gitignore 対象を確認、を必須化』を追記。家老レベルの commit にも適用。"
+    status: adopted
+    action: "cmd_B020 (ashigaruB1 棚卸し) で採用。instructions/ashigaru.md『自律判断ルール > git commit 前の事前チェック（必須）』として追記完了（2段チェック手順 + 混在対処 + cmd_B019事例の出典付き）。家老改修は家老/将軍が必要に応じて instructions/karo.md に派生追記予定。"
+
+  - id: KZ-135
+    timestamp: "2026-04-18T16:15:12"
+    reporter: ashigaruB1
+    category: tool_usage
+    description: "Playwright MCP は file:// プロトコルをブロックする。ローカル HTML 確認は python3 -m http.server 経由で HTTP 配信してから `browser_navigate http://localhost:<port>/` する必要がある"
+    impact: "再発する落とし穴。事前に共有していないとデザインリファイン・静的HTML検証タスクで毎回試行錯誤が発生する"
+    proposed_fix: "instructions/ashigaru.md または instructions/base.md に『Playwright で file:// はブロックされる。ローカル HTML 確認は python3 -m http.server 経由で実施すること』を追記"
+    status: adopted
+    action: "tcmd_217由来。Playwright file://ブロック対応を instructions/ashigaru.md『自律判断ルール > Playwright MCP file:// ブロック対応』に追記 + スキル化（skills/playwright-local-html-preview/SKILL.md）で採用。cmd_B020棚卸しで実装確認済。"
+  - id: KZ-124
+    timestamp: "2026-03-21T23:47:18"
+    reporter: ashigaruB2
+    category: quality
+    description: "unit_calvert.datに重複ブロック（約2600行）が発生。前回タスク実行時にwrite_datが二重書き込みした可能性。write_dat関数の冪等性確認、または書き込み前の既存内容チェックが必要"
+    impact: "ファイルサイズ倍増+重複ユニット定義でVT側の挙動不定リスク"
+    proposed_fix: "write_dat関数に書き込み前の既存内容比較チェックを追加、または追記モードではなく全置換モードに統一"
+    status: deferred
+    deferred_reason: "VT (vt_tenka_souran) プロジェクトは suspended 相当で tcmd_216 再開待ち（config/projects.yaml: active だが current_cmd=null・armyB既存タスクなし）。KZ-123 のcp932対応と合わせて write_dat 関数のリファクタリングタスクとして再開時に一括実施。cmd_B020 (2026-04-19) 棚卸しで deferred 維持を確認。"
+    resolution: "write_dat関数の現在の実装状態を確認する必要がある。KZ-123のcp932対応と合わせてwrite_dat関数全体のリファクタリングとして扱うべき"
+  - id: KZ-125
+    timestamp: "2026-03-22T00:18:00"
+    reporter: ashigaruB4
+    category: quality
+    description: "fightevent.datが第一部と第二部で共有されている勢力（赤軍等）と分離されている勢力（南方師団等）が混在。整合性チェック時に共有/独立の区別を明確にするメタデータが必要"
+    impact: "レビュー・修正時にファイル構造の把握に余分なコストが発生"
+    proposed_fix: "各勢力のfightevent共有/独立状態をメタデータとして管理"
+    status: deferred
+    deferred_reason: "VT (vt_tenka_souran) は tcmd_216 再開待ち。再開時に context/vt_tenka_souran.md に fightevent 共有/独立マトリクスを追記する形で即実行可能。cmd_B020 (2026-04-19) 棚卸しで deferred 維持 (accepted→deferred に変更、プロジェクト休眠中のため)。"
+    action: "VTシナリオのfightevent共有/独立状態をメタデータとしてcontext/vt_tenka_souran.mdまたは分析ドキュメントに記録する（再開時実行）"
+  - id: KZ-105
+    timestamp: "2026-03-02T21:48:39"
+    reporter: ashigaruB1
+    category: quality
+    description: "スキル化候補: dual-source-drift-detector — 2つの独立LLM呼び出しが同一概念(location等)を別々に生成し、キャッシュ vs リアルタイムの時間差で不整合が起きるパターンの検出・修正スキル"
+    impact: "マルチLLMアーキテクチャで頻発するアンチパターン。他プロジェクトでも同様の二経路ドリフト問題が起きる可能性"
+    proposed_fix: "スキル化して汎用検出・修正手順を標準化"
+    status: accepted
+    accepted_deadline: "2026-05-19"
+    action: "cmd_B020棚卸し (2026-04-19): skill_candidates.md『dual-source-drift-detector』として登録 → 将軍B裁定待ち。中粒（2経路コード静的解析+差分抽出ロジック設計が必要）のため別タスクで skill 実装。line_ai_friend が suspended 状態の間に skill 化を進められる。KZ-138ルール適用: 仮期限2026-05-19までに(a)別タスク起票 (b)skill_candidates再評価 (c)deferred降格 のいずれかを決定要。"
+  - id: KZ-106
+    timestamp: "2026-03-02T21:52:26"
+    reporter: ashigaruB1
+    category: quality
+    description: "line-ai-friend テスト既存不具合: lifeSimulator.test.js 3件(OpenAIモック破損) + socialNetwork.test.js 1件(データ8名vsテスト期待4名の乖離)"
+    impact: "テスト結果が常時4件失敗のため、新規バグの検出が紛れる"
+    proposed_fix: "lifeSimulatorのOpenAIモック修正 + socialNetworkのテスト期待値を8名に更新"
+    status: closed
+    resolution: "implemented — R1+R2全課題ゼロ達成済み（累計222件改修、791テスト通過）。テスト不具合は解消済み"
+  - id: KZ-107
+    timestamp: "2026-03-02T22:34:32"
+    reporter: ashigaruB1
+    category: quality
+    description: "スキル化候補: firestore-doc-size-analyzer — Firestore単一ドキュメント1MB上限問題の調査・チャンク分割設計パターン。embedding配列付きドキュメントのサイズ爆発検出に汎用適用可"
+    impact: "embedding保存のあるFirestoreプロジェクトで汎用的に使える"
+    proposed_fix: "スキル化して標準手順化"
+    status: accepted
+    accepted_deadline: "2026-05-19"
+    action: "cmd_B020棚卸し (2026-04-19): skill_candidates.md『firestore-chunk-toolkit』(KZ-107+109+111統合) として登録 → 将軍B裁定待ち。Firestoreサイズ分析 + チャンク分割migration + chunkモック構築を1スキル3モジュール構成で設計。KZ-138ルール適用: 仮期限2026-05-19までに action 決定要。"
+  - id: KZ-108
+    timestamp: "2026-03-02T22:34:32"
+    reporter: ashigaruB1
+    category: quality
+    description: "memoryRecall.js PRUNE_THRESHOLD=150/MAX_EPISODES_AFTER_PRUNE=120 がembeddingサイズ(12KB/件)を考慮しておらず、Firestore 1MB上限と整合しない"
+    impact: "件数ベースプルーニングでは120件×13KB=1.56MBとなり上限超過が再発する"
+    proposed_fix: "サイズベースしきい値（バイト数）でのプルーニングへ変更。またはチャンク分割で対応（cmd_064で実施中）"
+    status: closed
+    resolution: "implemented — cmd_064でチャンク分割対応が実施された。KZ-109のチャンク分割パターンにより1MB上限問題は解消"
+  - id: KZ-109
+    timestamp: "2026-03-02T22:48:00"
+    reporter: ashigaruB3
+    category: quality
+    description: "スキル化候補: firestore-chunk-migration-pattern — 1MB超過対応のチャンク分割パターン。meta文書管理+全チャンク並列取得+アクティブチャンク追記+バッチ再分配。episodic_memory以外にも応用可能"
+    impact: "1MB超過予想のFirestoreドキュメント全般に適用可"
+    proposed_fix: "スキル化"
+    status: accepted
+    accepted_deadline: "2026-05-19"
+    action: "cmd_B020棚卸し (2026-04-19): KZ-107『firestore-chunk-toolkit』に統合。migration 手順（meta管理+並列取得+バッチ再分配）は toolkit の2番目のモジュールとして設計予定。skill_candidates.md 登録済、将軍B裁定待ち。KZ-138ルール適用: 仮期限2026-05-19まで (KZ-107 と同期)。"
+  - id: KZ-110
+    timestamp: "2026-03-02T22:48:00"
+    reporter: ashigaruB3
+    category: quality
+    description: "lifeSimulator.test.jsのOpenAIモックがresponses.createをモックしているが実コードはchat.completions.createを使用。generateLifeStateテスト3件が常時失敗"
+    impact: "テスト信頼性低下"
+    proposed_fix: "テストのモックを実コードのAPI呼び出しに合わせる"
+    status: closed
+    resolution: "implemented — KZ-106と同一問題。R1+R2全課題ゼロ達成済み"
+  - id: KZ-111
+    timestamp: "2026-03-02T22:55:10"
+    reporter: ashigaruB2
+    category: quality
+    description: "スキル化候補: Firestoreチャンク分割モック構築 — batch()/set()/delete()/ref対応の汎用Firestoreモックパターン。チャンク対応テストのモック構築工数削減"
+    impact: "今後のチャンク対応テストで繰り返し使われる"
+    proposed_fix: "テンプレート化してスキル化"
+    status: deferred
+    deferred_reason: "line_ai_friend プロジェクトが現在アクティブタスクなし（current_cmd=null）。KZ-107『firestore-chunk-toolkit』に Mock モジュールとして統合する設計で skill_candidates.md に登録済。実装は line_ai_friend の次回テスト拡張タスク着手時 or 将軍B裁定で単独スキル化 と決定時。cmd_B020 (2026-04-19) 棚卸し。"
+    action: "KZ-107 firestore-chunk-toolkit の 3番目モジュール（Mock） として吸収。単独スキル化可否は将軍B裁定。"
+  - id: KZ-112
+    timestamp: "2026-03-02T22:55:10"
+    reporter: ashigaruB2
+    category: quality
+    description: "socialNetwork.test.js(人数4→8未更新) + lifeSimulator.test.js(OpenAIモック不整合)の既存テスト失敗が放置されている"
+    impact: "CI/CD信頼性低下。新規バグの検出がノイズに紛れる"
+    proposed_fix: "socialNetworkテスト期待値を8名に修正 + lifeSimulatorモックをchat.completions.createに合わせる"
+    status: closed
+    resolution: "implemented — KZ-106/KZ-110と同一問題。R1+R2全課題ゼロ達成済み"
+  - id: KZ-113
+    timestamp: "2026-03-03T15:18:01"
+    reporter: ashigaruB6
+    category: code_deduplication
+    description: "socialNetwork.js: generateNotificationsHybrid()とgenerateNotifications()のロジックが大部分重複。共通の通知生成ロジックを内部関数に切り出し、LLMプレビュー生成の有無のみを分岐するリファクタリングが望ましい"
+    impact: "片方を修正した際のもう片方への同期忘れリスク。cmd_072でA2-11/B2-15を両方に適用する手間が発生した"
+    proposed_fix: "共通_generateNotificationsBase()を切り出し、Hybrid版はLLMプレビュー生成のみ追加"
+    status: deferred
+    deferred_reason: "line_ai_friend は current_cmd=null で再開待機中。リファクタは単独タスクとして抽出困難（socialNetwork.js のテスト通過とペアで行うべき）ため、再開時の socialNetwork.js 改修タスクに合流させる。context/line_ai_friend.md §注意すべき連鎖 に既に注記済 (2026-04-06)。cmd_B020 (2026-04-19) 棚卸しで deferred 化 (accepted→deferred)。"
+    action: "line_ai_friend 再開時の socialNetwork.js リファクタタスクに合流。共通 _generateNotificationsBase() 切り出し → Hybrid 版は LLM プレビュー呼び出しのみ追加する設計。"
+  - id: KZ-114
+    timestamp: "2026-03-03T17:55:01"
+    reporter: ashigaruB3
+    category: code_duplication
+    description: "promptBuilder/activePromptBuilder間でエピソード記憶フォーマット関数が重複コピーされている"
+    impact: "片方修正時の同期忘れリスク。フォーマット変更が二箇所に及ぶ"
+    proposed_fix: "共通ユーティリティモジュールへの切り出し"
+    status: accepted
+    accepted_deadline: "2026-05-19"
+    army_scope: armyA
+    action: "promptBuilder/innerThoughtBuilder は armyA 管轄。armyB 側では対応不可。armyA の kaizen.yaml への転記が望ましい。KZ-138ルール適用: 仮期限2026-05-19までに大将軍経由で armyA 転送完了 or deferred 降格を決定要。"
+    note: "cmd_B020 (2026-04-19) 棚卸し: 本タスクは armyB スコープのため kaizen.yaml の変更のみ。armyA kaizen.yaml への実転記は家老A/将軍Aの管轄（他軍 kaizen.yaml への書き込み禁止ルールに従い armyB からは記録のみ）。将軍B→大将軍経由で armyA に共有されるのが筋。context/line_ai_friend.md §注意すべき連鎖 にも KZ-114 が注記済。"
+  - id: KZ-115
+    timestamp: "2026-03-03T18:30:01"
+    reporter: ashigaruB5
+    category: quality
+    description: "webhookHandler.js:758-763 readSkipContext if-else閾値分岐がLLM委譲未実施"
+    impact: "CRITICAL: 方針違反の閾値ベースif-else残存"
+    proposed_fix: "readSkipContext閾値分岐をLLM委譲パターンに変換"
+    status: closed
+    resolution: "implemented — readSkip.jsはno-op化済み。cmd_098で削除予定として進行中"
+  - id: KZ-116
+    timestamp: "2026-03-03T18:30:02"
+    reporter: ashigaruB5
+    category: quality
+    description: "socialNetwork.js 頻度/関係メタデータのif-else分岐6件残存"
+    impact: "HIGH: 方針違反の閾値ベースif-else残存"
+    proposed_fix: "頻度/関係メタデータのif-else→LLM委譲変換"
+    status: deferred
+    deferred_reason: "line_ai_friend は current_cmd=null。socialNetwork.js の現状コード確認は line_ai_friend 再開時に実施（R1+R2 222件改修でカバーされた可能性あり）。残存していれば既存 skill『llm-delegation-prompt-injector』で機械的変換可。cmd_B020 (2026-04-19) 棚卸し。"
+    resolution: "socialNetwork.jsの現在のif-else残存状態を確認する必要がある。R1+R2で222件改修済みだが、この6件が含まれていたか不明"
+    action: "再開時: (1) socialNetwork.js を grep で if-else 検出 → (2) 残存していれば llm-delegation-prompt-injector スキルを適用。残存ゼロなら closed 化。"
+  - id: KZ-117
+    timestamp: "2026-03-03T19:10:00"
+    reporter: ashigaruB8
+    category: workflow
+    description: "個別レビューのYAMLフォーマット標準化。B1-B7の各レビューをstructured data（スコア、if-else件数、改善提案）で出力すれば、統合レビューの集計・統合リスト生成を半自動化できる"
+    impact: "現在は各レビューのマークダウンを人力で読み解いて集計。次回レビュー時にコスト大"
+    proposed_fix: "レビュータスクYAMLにスコア・if-else件数・改善提案の構造化スキーマを定義"
+    status: accepted
+    accepted_deadline: "2026-05-19"
+    action: "cmd_B020棚卸し (2026-04-19): 既採用スキル『cross-module-review-integrator』(skill_candidates.md 登録済・tcmd_176実装相当) がレビュー結果統合ロジックを担う想定。本エントリは『次回レビュー系 tcmd 発行時に templates/review_schema.yaml を定義』として残置（skill と独立してスキーマ側のテンプレート化が必要）。中粒のため別タスクで実装（将軍B/家老Bが次回レビュー系タスク発行時に templates/ に追加）。KZ-138ルール適用: 仮期限2026-05-19までに別タスク起票 or deferred 降格を決定要。"
+  - id: KZ-118
+    timestamp: "2026-03-03T20:25:00"
+    reporter: ashigaruB6
+    category: test_maintainability
+    description: "socialNetwork.test.jsの人数アサーション（toHaveLength(5)）がSOCIAL_NETWORKの追加に追従できない。人物数直接テスト→各人物の必須フィールド存在チェックに変更すべき"
+    impact: "キャラクター追加のたびにテスト修正が必要。cmd_077でもフェイリス/るか追加で5→7になりテスト失敗"
+    proposed_fix: "SOCIAL_NETWORK.lengthではなく各人物のnameフィールド存在チェックに変更"
+    status: deferred
+    deferred_reason: "line_ai_friend は current_cmd=null。修正は socialNetwork.test.js 1 ファイルの小粒改修だが、再開時の KZ-113 リファクタと同時に扱うのが効率的。context/line_ai_friend.md §学習した知見 に『テストのアサーションは固定長ではなくフィールド存在チェックを使い、データ追加に耐性を持たせる』として既に昇格済（2026-04-06）。cmd_B020 (2026-04-19) 棚卸し。"
+    action: "line_ai_friend 再開時: socialNetwork.test.js の toHaveLength(N) を expect.arrayContaining([expect.objectContaining({name: ...})]) パターンに書き換え。"
+  - id: KZ-119
+    timestamp: "2026-03-03T20:30:00"
+    reporter: ashigaruB2
+    category: test_reliability
+    description: "body.jsの急性イベント(acuteEvents)がupdateBody内で確率的に発火するため、alertnessの決定論的テストがフレイキーになる"
+    impact: "テストの安定性低下。CI/CDで偶発的失敗が起きうる"
+    proposed_fix: "Math.randomをDI可能にするか、テスト時にmockするパターンを標準化"
+    status: deferred
+    deferred_reason: "line_ai_friend は current_cmd=null。根本原因は body.js L190-191 で特定済 (context/line_ai_friend.md §開発教訓 に記録)。対応は body.test.js で jest.spyOn(Math, 'random').mockReturnValue(1.0) を追加する小粒改修。再開時の体調系テスト拡張タスクに合流。cmd_B020 (2026-04-19) 棚卸し。"
+    action: "再開時: body.test.js で Math.random を 1.0 に mock し acuteEvents 発火を抑止。context/line_ai_friend.md §学習した知見 にも『確率的処理（Math.random）を含む関数のテストではDIまたはモックを標準化する』として昇格済。"
+  - id: KZ-120
+    timestamp: "2026-03-05T15:43:10"
+    reporter: ashigaruB2
+    category: workflow
+    description: "タスクYAMLに既に完了済みの修正が記載されていた（cmd_058 B-1 CJKフォント設定）。タスク割当前に現状コードとの差分確認を行えば不要なタスク割当を防げる"
+    impact: "足軽の工数浪費（全ファイル読み→既実装確認→報告の往復）"
+    proposed_fix: "家老がタスク分配前に対象ファイルのgrep/確認を行い、既実装の場合はタスクをスキップする"
+    status: adopted
+    action: "cmd_B020棚卸し (2026-04-19) で採用。instructions/karo.md『タスク分解の五つの問い > 割当前の実装状態確認（必須）』として追記完了（Grep突合手順 + KZ-131派生の5項目以上ルール + 出典）。context/shogun_system.md §運用改善 にも既掲載 (2026-04-07)。"
+  - id: KZ-121
+    timestamp: "2026-03-05T15:51:48"
+    reporter: ashigaruB1
+    category: workflow
+    description: "未ESM化モジュール（window.*経由）はHTMLのscriptタグ追加漏れがエラーなく静かにスキップされる。office-chat.jsが未ロードでチャットパネルが表示されない問題が発生"
+    impact: "機能が静かに無効化され発見が遅れる"
+    proposed_fix: "CI/CDでHTMLのscriptタグとoffice-main.jsのwindow.*依存を照合する自動チェック導入"
+    status: deferred
+    deferred_reason: "line_ai_friend は current_cmd=null。CI/CD導入はプロジェクト側のワークフロー変更（.github/workflows/）であり line_ai_friend 再開時のインフラ系タスクとして扱う。context/line_ai_friend.md §学習した知見 に『未ESM化モジュールのscriptタグ漏れはCI/CDで自動検出すべき』として昇格済 (2026-04-06)。cmd_B020 (2026-04-19) 棚卸し。"
+    action: "再開時: scripts/check_script_tags.js 新設 → HTMLのscriptタグ全列挙 vs office-main.js の window.* 参照全列挙 → diff があれば fail exit。GitHub Actions で pre-commit 同等相当で走らせる。"
+  - id: KZ-123
+    timestamp: "2026-03-14T00:30:17"
+    reporter: ashigaruB3
+    category: quality
+    description: "write_dat()関数にcp932非対応文字(em-dash U+2014等)の自動置換を組み込むべき。複数足軽が同じ問題で手戻りしている"
+    impact: "VTシナリオ実装で毎回cp932エンコード問題に遭遇。B1はASCIIハイフン、B3は全角ダッシュで各自対処"
+    proposed_fix: "write_dat関数のラッパーにunicode→cp932変換テーブルを追加（U+2014→――, U+2013→-, U+2018/'→', U+2019/'→'等）。加えて書き出し前に\\r除去→\\r\\n再付与の正規化を入れるべき（B8報告: skill.datに0d多重混入13534バイト）"
+    status: deferred
+    deferred_reason: "VT (vt_tenka_souran) は tcmd_216 再開待ち（current_cmd=null）。KZ-124 (write_dat 重複ブロック) と合わせて write_dat 関数の一括リファクタとして再開時に実施。cmd_B020 (2026-04-19) 棚卸し。"
+    action: "再開時: write_dat() に (1) unicode→cp932 変換テーブル（U+2014→――, U+2013→-, U+2018/U+2019→', U+201C/U+201D→\"）と (2) 改行正規化（\\r除去→\\r\\n再付与）を追加。KZ-124 の重複書き込み対策と同タスクで実施。"
+  - id: KZ-126
+    timestamp: "2026-03-25T11:36:10"
+    reporter: ashigaruB2
+    category: tool
+    description: "密度削減タスクでは、条件分岐(if/else)の両方がカウントされるため実際のプレイ体験より密度が高く計測される。分岐を考慮した密度計測ツールがあれば精度が上がる"
+    impact: "密度計測の精度低下。削減しすぎ/不足のリスク"
+    proposed_fix: "条件分岐ブロックを検出し、各分岐のみのカウントで密度を算出するオプション付き計測ツール"
+    status: deferred
+    deferred_reason: "VT (vt_tenka_souran) は tcmd_216 再開待ち。要件定義不十分（VTスクリプト固有の分岐構文への対応範囲未確定）のため、再開時に密度削減タスクが具体化したときに要件固めから着手。cmd_B020 (2026-04-19) 棚卸し。"
+    resolution: "ツールの要件定義が不十分。条件分岐の検出精度やVTスクリプト固有の分岐構文への対応範囲を明確にしてから着手すべき"
+    action: "再開時: (1) VTスクリプトの分岐構文（if/else/branch等）を構造解析 → (2) 各分岐を独立評価したトータル密度を算出 → (3) オプションで分岐統合/独立モード切替。"
+  - id: KZ-122
+    timestamp: "2026-03-05T15:55:49"
+    reporter: ashigaruB3
+    category: quality
+    description: "office-zoom.jsはESM形式で書かれていたがimportもscriptタグもなく機能していなかった。未ESM化モジュールリストコメントと実態が乖離。他の未ESM化モジュール（office-chat, office-conversations, office-life, office-audio）も同様の問題がないか確認推奨"
+    impact: "ESM化済みモジュールが未ロードで機能無効化"
+    proposed_fix: "未ESM化モジュールリストの棚卸し。ESM化済みのモジュールはimport追加"
+    status: deferred
+    deferred_reason: "line_ai_friend は current_cmd=null。棚卸し作業自体は office-*.js の構文解析で機械化可能だが、KZ-121 CI/CDチェックと同時実施が効率的。再開時に1タスクで実施。cmd_B020 (2026-04-19) 棚卸し。"
+    action: "再開時: (1) office-*.js の export/import/window.* を全列挙 → (2) 未ESM化モジュールリストコメントと実態突合 → (3) ESM化済みならHTMLにimport追加 or 他モジュールから import。KZ-121 の CI/CD スクリプト作業と合流。"
+  - id: KZ-127
+    timestamp: "2026-04-15T23:13:00"
+    reporter: ashigaruB6
+    category: security
+    priority: high
+    description: "cmd_B010 U-13で新設した feedbacks コレクションへの書き込みセキュリティルールが未確認。現状未定義なら誰でも書き込める状態で、スパム/XSSリスクあり"
+    impact: "Firestore feedbacks への不正書き込み、コスト跳ね上がり、内容汚染"
+    proposed_fix: "firestore.rules に match /feedbacks/{id} ブロック追加。request.auth != null + size制限 + rate limit 付与"
+    status: closed
+    closed_at: "2026-04-19T10:10:00Z"
+    resolution: "cmd_B022 (tcmd_222, PR#19 squash 001b045, 2026-04-19) で恒久解消。殿判断2026-04-19 Google Form 維持方針により、battle/ 配下の自前フィードバック実装（modal.js showFeedbackForm + userRepo.js submitFeedback + feedbacks コレクション書込 + feedbackBtn + .feedback-form）を全撤去。feedbacks コレクション自体への書き込み経路が消滅したため security: high リスクは恒久的に消滅。"
+  - id: KZ-128
+    timestamp: "2026-04-15T23:13:00"
+    reporter: ashigaruB6
+    category: tooling
+    priority: medium
+    description: "Playwright MCPヘッドレスChromiumにNoto Sans CJK等の日本語フォント未導入で、スクショ上の日本語が豆腐化。視覚検証のタイポグラフィ確認不可"
+    impact: "Playwright MCPで視覚検証を行う全軍・全タスクで日本語スクショの信頼性低下"
+    proposed_fix: "scripts/install_playwright_jp_fonts.sh 新設、fonts-noto-cjk パッケージ自動導入。shutsujin_departure等に組み込むか手動実行手順化"
+    status: closed
+    closed_at: "2026-04-16T00:36:00"
+    resolution: "fonts-noto-cjk導入完了（殿が!bashで実行）+ Playwright MCP再撮影8枚で豆腐化解消確認。scripts/install_playwright_jp_fonts.sh + memory/reference_playwright_jp_fonts.md整備済。"
+    related_cmd: ["cmd_B013", "cmd_B014", "tcmd_114"]
+  - id: KZ-129
+    timestamp: "2026-04-15T23:13:00"
+    reporter: ashigaruB6
+    category: cleanup
+    priority: low
+    description: "cmd_B010 U-13で自前フィードバックフォーム(modal.js showFeedbackForm + Firestore feedbacks)を実装したが、battle/index.html末尾の既存Google Form iframeが残存"
+    impact: "重複UIでユーザー混乱、保守コスト増"
+    proposed_fix: "Firestoreルール整備後にiframe削除。Google Form側の過去送信分はエクスポートして保管"
+    status: wontfix
+    closed_at: "2026-04-19T10:10:00Z"
+    close_reason: "殿判断2026-04-19 Google Form維持方針（cmd_B022で自前フィードバック撤去で確定）+ 実リポジトリに Google Form iframe 自体が存在していなかったため『削除』対象自体が無かった。前提不成立により wontfix。iframe 実装追加は別問題として KZ-139 で追跡。"
+  - id: KZ-130
+    timestamp: "2026-04-15T23:13:00"
+    reporter: ashigaruB6
+    category: structure
+    priority: low
+    description: "cmd_B010で modal.js が showStatusGuide/showDefenseLogs/showFeedbackForm/showSettings/showRanking と肥大化。将来的に modals/ ディレクトリ分割が望ましい"
+    impact: "可読性低下、変更の衝突リスク"
+    proposed_fix: "battle/assets/js/ui/modals/ 配下に status_guide.js / defense_logs.js / feedback.js / settings.js / ranking.js として分割"
+    status: accepted
+    accepted_deadline: "2026-05-19"
+    action: "cmd_B020 棚卸し (2026-04-19): low priority のため open→accepted に昇格のみ。camp_battle_game の次期リファクタタスク (cmd_B017 以降の拡張で modal.js が更に膨らんだタイミング) で実施。既 採用スキル『dom-layout-refactor-id-preserving』(ID保持リファクタ) を部分的に流用可能。KZ-138ルール適用: 仮期限2026-05-19までに別タスク起票 or deferred 降格を決定要。"
+  - id: KZ-131
+    timestamp: "2026-04-15T23:15:00"
+    reporter: ashigaruB6
+    category: process
+    priority: medium
+    description: "cmd_B010のU-1「userInfoCard 3列グリッド」がB5 Phase 2Cで誤実装（モバイルビューポート対応として処理）され本番反映後に検出。タスクYAMLの確認項目と実装内容の事前突合チェックがない"
+    impact: "検証段階で初めて要求乖離が発覚。将軍B → 家老B → 足軽のタスク分配で再設計コストが発生"
+    proposed_fix: "大規模refactor系タスクの分配前に、家老が『確認項目テキスト vs 実装grep』の突合チェックを実施。不整合があれば『実装不在→タスクから外すor再設計』『実装あり→検証対象として明記』のどちらかに確定。KZ-120（タスク分配前の実装状態確認）の派生強化として統合可能"
+    status: closed
+    closed_at: "2026-04-19T02:00:00Z"
+    close_reason: "cmd_B020棚卸し (2026-04-19): KZ-120 の instructions/karo.md 昇格で家老側の事前突合チェックが制度化 + KZ-133 の足軽側『複数項目タスク着手手順』が足軽側の制度化として統合される予定のため、KZ-131 単独での open 維持は冗長。KZ-120 + KZ-133 に吸収。"
+    note: "将軍B棚卸し(2026-04-17): KZ-133の制度化提案で包含可能。KZ-133が大将軍承認・実装されればcloseする"
+  - id: KZ-132
+    timestamp: "2026-04-15T23:15:00"
+    reporter: ashigaruB6
+    category: quality
+    priority: medium
+    description: "cmd_B010 U-1（ユーザー情報カード3列グリッド）未実装。B5 Phase 2Cでは #userInfoCard への grid 定義が style.css に存在せず、本番も display:block のまま縦並び。実害はないがタスク要求との乖離"
+    impact: "tcmd_111の実装完遂度が34/35項目に低下"
+    proposed_fix: "#userInfoCard に display:grid / grid-template-columns:repeat(3,1fr) / gap を追加する軽微修正。次回cmd_B012等のミニタスクで回収。@media (max-width:480px) で1列fallback"
+    status: resolved
+    resolution: "cmd_B012 (PR #6, squash SHA acfac5d) で B5 (誤実装当事者) が再挑戦回収。PC=116px×3/mobile=292px×1 を本番実機で確認。分母0時の勝率「-」表示も動作確認済。完遂度 35/35 に復元。"
+  - id: KZ-133
+    timestamp: "2026-04-15T23:30:00"
+    reporter: ashigaruB5
+    category: process
+    priority: medium
+    description: "足軽が5項目以上の複数項目タスクに着手する際の『仕様抽出チェックリスト』手順がinstructions/ashigaru.mdに未定義。cmd_B010 Phase 2CでのU-1誤実装の直接原因は『先入観による項目見出しの誤解釈＋チェックリスト未作成』"
+    impact: "類似の多項目UIタスクで誤実装→本番検出→回収という無駄な往復が発生する可能性"
+    proposed_fix: "instructions/ashigaru.md に『複数項目タスク着手手順』セクション新設: (1) タスクYAMLから各項目のDoDをReadで該当行を直接引用 (2)『何を/どこに/どう見えるか』を3行で言語化 (3) 実装→セルフチェック→マーク完了の順で進める (4) 5項目以上の時は必須。instructionsは全軍共通のため大将軍または忍衆が改修担当。"
+    status: adopted
+    action: "cmd_B020棚卸し (2026-04-19) で採用。instructions/ashigaru.md『自律判断ルール > 複数項目タスク着手手順（5項目以上で必須）』として追記完了（4段階手順 + KZ-132/cmd_B010 U-1 事例の出典付き）。base.md 12-4 の改修権限ルールにより『instructions/*.md（自分の役割）→ 当該エージェント（kaizen_candidate経由）』に該当し軍B 足軽が自律改修可能。"
+  - id: KZ-134
+    timestamp: "2026-04-16T00:40:00"
+    reporter: ashigaruB2
+    category: tooling
+    priority: low
+    description: "Playwright MCP の browser_wait_for は存在未確認の文字列で呼ぶと30秒 timeout して時間を浪費する。cmd_B014 で browser_wait_for('難易度') が timeout し実時間ロス発生"
+    impact: "スクショ/E2E系タスクでwait戦略の事故→タスク所要時間の恒常的膨張"
+    proposed_fix: "wait戦略を『固定ID/要素の出現を browser_evaluate で直接判定』デフォルト化。wait_for_textは事前grep済のユーザー可視テキスト（ボタンラベル等）に限定運用。templates/ashigaru_subagent_prompt.md または Playwrightスキルに運用ルール追記"
+    status: adopted
+    action: "cmd_B020棚卸し (2026-04-19): skills/playwright-local-html-preview/SKILL.md §Guidelines / Failure Modes §Playwright MCP 固有の注意 に『browser_navigate 後、レンダリング完了を確認したいときは browser_wait_for ではなく browser_evaluate で DOM 条件を直接判定する方が安全（KZ-134 参照）』として既記載。本エントリは『wait戦略: browser_evaluate デフォルト化 + wait_for_text は事前grep済テキストに限定』のルールがスキル側で運用ルール化されたことを以て adopted とする。"
