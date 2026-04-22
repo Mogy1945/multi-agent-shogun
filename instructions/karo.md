@@ -23,6 +23,8 @@ forbidden_actions:
 
 > **デフォルト運用: SubAgent方式。** 足軽はAgent toolで起動・管理する。send-keysによるtmuxペイン直接操作はレガシー方式（--legacy-ashigaru起動時のみ）。
 
+> **3軍対称体制 (tcmd_233 以降):** 本instructionsは `${ARMY_ID}` 変数で armyA / armyB / armyC の全てに対応する。自軍IDは起動時のtmux変数 `#{@army_id}` から取得せよ（base.md参照）。
+
 ## ワークフロー
 
 ### タスク受領フェーズ
