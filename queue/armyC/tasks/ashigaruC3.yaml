@@ -1,0 +1,80 @@
+# 小太郎 任務書
+task:
+  task_id: scmd_001_kotaro_forced_leave_bug
+  parent_cmd: scmd_001
+  project: camp_schedule_app
+  description: |
+    【camp-schedule-app 依頼3: バトルページ初期遷移時「強制離脱しました」誤表示バグ調査+最小修正】
+
+    ■ プロジェクト
+    - パス: /home/hatan/camp-schedule-app/
+    - 本番: https://camp-schedule-app.vercel.app/battle/
+    - 技術: Vanilla JS / Firebase Firestore / onSnapshot リスナー
+
+    ■ 殿からの報告（原文）
+    「最初バトルページに入った時、何もしていないのに『強制離脱しました』とか出る」
+
+    ■ 再現手順（想定）
+    1. トップページ → バトルボタン → /battle/index.html
+    2. 初回ロード直後、ユーザーが何も操作していない瞬間に離脱系メッセージが出る
+
+    ■ 調査ポイント
+    - battle/assets/js/main.js 内で以下のキーワードを grep せよ:
+      「離脱」「強制離脱」「forfeit」「leave」「abandon」
+    - news.json 2025/05/08 エントリに「途中離脱を敗北とするようにしました」とあり、
+      離脱判定ロジックが **初回ロード時に既存戦闘の残骸（Firestore上の中断戦闘）を検出してしまっている** 可能性が高い
+    - 想定原因候補:
+      (a) Firestore 上に残っている「進行中戦闘」ドキュメントを初回ロードで検知 → 離脱判定が発火
+      (b) ログイン直後の戦闘復元処理が null チェック不足で警告を出している
+      (c) localStorage / sessionStorage の前回セッションが残っていて再読込時に離脱扱い
+      (d) Firestore の onSnapshot リスナーが初期化時に発火し、過去の戦闘状態を「今離脱した」と誤判定
+    - 軍B が tcmd_111 でリファクタしたばかりなので、リファクタ副作用の可能性も高い
+      （main.js 1935→60行分割時にライフサイクル順序が変わっている可能性）
+
+    ■ 実装方針
+    1. **再現**: Playwright MCP で本番 https://camp-schedule-app.vercel.app/battle/ を
+       （未ログイン→ログイン→バトル画面）の順で開き、実際にメッセージが出るか確認・スクショ。
+       日本語フォント導入済みなので豆腐化しないはず。
+       ※ 認証が必要で Playwright で入れない場合は、コード解析ベースで発火パスを特定してもよい。
+    2. **原因特定**: Console / Network / コードリーディングで発火元を特定。
+       コメントか報告に「原因: xxx（ファイル:行）」を明記せよ。
+    3. **最小パッチで修正**:
+       - 「初回ロード時は離脱判定をスキップ」
+       - 「前回セッションの残骸は無視」
+       - 「onSnapshot の初回発火は state だけ同期してメッセージは出さない」
+       …等、副作用を最小にする方針を選べ。
+    4. **再検証**: 修正後、Playwright または静的論証で再現しないことを確認。
+       Playwright 実機確認できる場合はスクショ1枚以上。
+
+    ■ 触ってOK
+    - /home/hatan/camp-schedule-app/battle/assets/js/*.js（調査+最小修正）
+    - /home/hatan/camp-schedule-app/battle/assets/css/style.css（必要なら依頼3 最小範囲）
+
+    ■ 触禁
+    - /home/hatan/camp-schedule-app/dungeon/ 配下
+    - /home/hatan/camp-schedule-app/index.html（ルート、半蔵管轄）
+    - /home/hatan/camp-schedule-app/battle/index.html（佐助がver表記書き換え中。小太郎は触るな）
+    - /home/hatan/camp-schedule-app/battle/assets/news.json（佐助管轄）
+    - /home/hatan/camp-schedule-app/assets/js/shared/（読取のみ）
+    - Firestore Rules / firestore.indexes.json（設計変更は範囲外）
+    - main.js の設計変更禁止。最小パッチで済ませよ
+    - 戦闘中の **正規の離脱判定**（実際に中断した場合）を壊すな
+    - git commit は **するな**（忍頭が最後に3依頼まとめて PR を切る）
+
+    ■ 軍Bへの影響共有
+    - battle/ は軍B の管轄。修正内容を軍Bに共有する必要あり
+    - ただし **小太郎は軍Bに直接 send-keys するな**（SN-F005 違反）
+    - 報告の notes に「軍B に共有すべき内容」セクションを設け、忍頭が共有を代行する
+
+    ■ 完了条件
+    - [ ] バグ原因の特定（コードコメント or 報告に記載）
+    - [ ] 最小パッチで修正
+    - [ ] Playwright 実機検証 or 静的論証で再現しないことを確認
+    - [ ] 軍B に共有すべき内容を報告 notes に記載
+
+    ■ 出力
+    - queue/shinobi/reports/kotaro_report.yaml に報告を書け
+    - 原因分析 + 修正内容 + 検証結果 + 軍B共有事項 を result/notes に含めよ
+  status: done
+  timestamp: "2026-04-16T00:28:00"
+  completed_at: "2026-04-16T00:35:07"

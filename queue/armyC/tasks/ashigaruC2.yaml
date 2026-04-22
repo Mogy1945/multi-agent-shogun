@@ -1,0 +1,74 @@
+# 佐助 任務書
+task:
+  task_id: scmd_001_sasuke_battle_ver04
+  parent_cmd: scmd_001
+  project: camp_schedule_app
+  description: |
+    【camp-schedule-app 依頼2: battle バージョン更新 ver0.3 → ver0.4 + news.json 更新履歴追加】
+
+    ■ プロジェクト
+    - パス: /home/hatan/camp-schedule-app/
+    - 本番: https://camp-schedule-app.vercel.app/battle/
+    - 技術: Vanilla JS / Firebase Firestore
+
+    ■ 背景
+    - 軍B が tcmd_111 で battle/ 全面リファクタ35項目完了（PR #5 merged）
+    - cmd_B012 で U-1（3列グリッド崩れ）の修正 PR #6
+    - これらを「ver0.4」として公開し、更新履歴にユーザー向けの変更点を記載する
+
+    ■ 現状
+    - /home/hatan/camp-schedule-app/battle/index.html L51 付近:
+      `<h2>参加者バトル ver0.3</h2>`
+    - /home/hatan/camp-schedule-app/battle/assets/news.json:
+      更新履歴の JSON 配列。最終更新 2025/05/12 付近
+
+    ■ 実装
+    1. battle/index.html L51 を `<h2>参加者バトル ver0.4</h2>` に変更
+    2. battle/assets/news.json の **先頭（配列の index 0）** に今回の改修エントリを追加:
+       ```json
+       {
+         "date": "2026/04/16",
+         "type": "調整",
+         "title": "ver0.4 — 動作の安定化と見た目の微調整",
+         "detail": "<p>...</p>"
+       }
+       ```
+       detail の書き方:
+       - tcmd_111 リファクタ35項目 と cmd_B012 U-1 修正から **ユーザーに影響する変更のみ** を抽出
+       - 技術用語NG（main.js 1935→60行 などは書かない）
+       - 観点: 画面表示・操作感の改善 / 表示崩れ・バグ修正（3列グリッド復活など見てわかる範囲）/ 読み込み軽量化・安定化
+       - HTML 形式（<p>, <ul><li> など）、日本語、簡潔に
+    3. 情報源:
+       - /home/hatan/multi-agent-shogun/dashboard_armyB.md（読み取り専用）
+       - /home/hatan/multi-agent-shogun/queue/armyB/reports/ に cmd_B012 報告があれば参照
+       - `git log --oneline battle/` で commits からユーザー影響ありそうなものを抽出してもOK
+         （作業ディレクトリ: /home/hatan/camp-schedule-app/）
+
+    ■ 触ってOK
+    - /home/hatan/camp-schedule-app/battle/index.html
+    - /home/hatan/camp-schedule-app/battle/assets/news.json
+
+    ■ 触禁
+    - /home/hatan/camp-schedule-app/dungeon/ 配下（軍A実装中）
+    - /home/hatan/camp-schedule-app/battle/assets/js/*（依頼3 小太郎の管轄。ver表記書き換え以外の JS 改変禁止）
+    - /home/hatan/camp-schedule-app/index.html（ルート、依頼1 半蔵の管轄）
+    - news.json の既存エントリの改変禁止（先頭追加のみ）
+    - git commit は **するな**（忍頭が最後に3依頼まとめて PR を切る）
+
+    ■ 完了条件
+    - [ ] battle/index.html に ver0.4 表記
+    - [ ] news.json 先頭に 2026/04/16 エントリ追加（既存配列は保持）
+    - [ ] detail がユーザー向け（技術用語なし、日本語、HTML形式）
+    - [ ] JSON が構文的に妥当（`python3 -m json.tool` で検証推奨）
+
+    ■ 検証
+    - news.json 編集後、`python3 -m json.tool /home/hatan/camp-schedule-app/battle/assets/news.json > /dev/null`
+      でパース成功を確認せよ
+    - detail の内容を報告に全文引用せよ（殿が最終確認するため）
+
+    ■ 出力
+    - queue/shinobi/reports/sasuke_report.yaml に報告を書け
+    - detail 全文を notes に記載せよ
+  status: done
+  timestamp: "2026-04-16T00:28:00"
+  completed_at: "2026-04-16T00:32:57"
