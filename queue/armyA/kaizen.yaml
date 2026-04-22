@@ -76,7 +76,10 @@ entries:
     source: 家老A (cmd_229)
     timestamp: "2026-04-21"
     category: quality
-    status: open
+    status: fixed
+    fixed_at: "2026-04-22"
+    fixed_by: cmd_242
+    fixed_artifact: skills/wcag-contrast-playwright-auditor/SKILL.md
     description: "skill化候補: wcag-contrast-playwright-auditor。Playwright browser_evaluate内で alpha合成込みの WCAG 2.x比率計測を行う手順。cmd_229で 1.27→11.07 を実測で証明した手法。"
     proposal: "skill: wcag-contrast-playwright-auditor（alpha合成込み WCAG2.x比率をPlaywright経由で計測）"
 
@@ -92,7 +95,10 @@ entries:
     source: 家老A (cmd_229)
     timestamp: "2026-04-21"
     category: workflow
-    status: open
+    status: fixed
+    fixed_at: "2026-04-22"
+    fixed_by: cmd_242
+    fixed_artifact: "skills/wcag-contrast-playwright-auditor/SKILL.md (Related Workflow 節に cache-bust スニペット同梱、WCAG audit と必須セット運用)"
     description: "Playwright MCP経由でCSS編集後、ブラウザキャッシュで古いCSSが残り比率計測がBeforeのままになる問題。link[rel=stylesheet] href に ?bust=${Date.now()} を注入する cache-bust 手順を定型化したい。"
     proposal: "Playwright browser_evaluate で 全link[rel=stylesheet].hrefに ?bust= を注入するワンライナーをスニペット化、検証手順に組み込む"
 
