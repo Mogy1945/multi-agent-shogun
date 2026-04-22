@@ -1,0 +1,125 @@
+worker_id: sasuke
+task_id: scmd_001_sasuke_battle_ver04
+parent_cmd: scmd_001
+timestamp: "2026-04-16T00:32:57"
+status: done
+result: |
+  # 参加者バトル ver0.4 表記更新 + news.json リリースエントリ追加 完了報告
+
+  ## 0. 結論
+  - 対象ファイル:
+    - /home/hatan/camp-schedule-app/battle/index.html （<h2> ver表記のみ変更）
+    - /home/hatan/camp-schedule-app/battle/assets/news.json （配列先頭に 2026/04/16 エントリを追加）
+  - 既存 news エントリ7件は一切改変せず、順序も保持。新規エントリは index 0 に挿入。
+  - battle/assets/js/* 配下は一切変更なし（小太郎管轄のため ver 表記書き換え以外の改変禁止を遵守）。
+  - dungeon/ 配下、ルート index.html も一切変更なし。
+  - git commit は実行せず（忍頭が最終統合で3依頼まとめて PR を切るため）。
+
+  ## 1. 実施内容
+
+  ### 1-1. battle/index.html L51 の ver 表記変更
+  変更前:
+  ```html
+      <h2>参加者バトル ver0.3</h2>
+  ```
+  変更後:
+  ```html
+      <h2>参加者バトル ver0.4</h2>
+  ```
+  - ファイルは CRLF 改行で保存されていたため、Python の bytes 操作で改行コードを保持したまま書き換え（文字列「参加者バトル ver0.3」の出現回数を 1 で検証済）。
+  - それ以外の行は一切触っていない。
+
+  ### 1-2. battle/assets/news.json に 2026/04/16 エントリを先頭追加
+  - 既存配列は UTF-8 / LF / 2スペースインデントで保存されていたため、同じスタイルを維持。
+  - 先頭 `[\n` の直後に新エントリ（2スペース追加インデント付き）を挿入し、既存先頭エントリとの間は `,\n` で連結。
+  - 検証:
+    - `python3 -m json.tool` パース成功（構文OK）
+    - `json.load()` 後のエントリ順: `[2026/04/16, 2025/05/12, 2025/05/12, 2025/05/08, 2025/05/02, 2025/05/02, 2025/04/28, 2025/04/27]`（8件）
+    - 既存7件の date 列が想定通りの順序で保持されていることを確認済
+
+  ## 2. detail の設計方針
+  - 情報源: `dashboard_armyB.md`（tcmd_111 35項目 Phase 2A〜2D + cmd_B012 U-1 回収）と `queue/armyB/reports/ashigaruB4_report.yaml`（D-1〜D-8）/ `ashigaruB5_report.yaml`（U-1 3列グリッド回収）/ `ashigaruB6_report.yaml`（本番検証 U-11 トースト / U-12 news 動的化 / U-13 フィードバック / U-17 設定保存）/ `reports/cmd_B010_phase2d/validation_report.md`
+  - タスクYAMLの指示通り「ユーザーに影響する変更」のみを抽出し、技術用語（main.js 1935→60行、モジュール分割、Firestore schema 等）は一切書かない方針。
+  - 3カテゴリで整理:
+    1. ゲーム性の改善（D-1 難易度選択 / D-3 マッチング / D-2 トドメ判断 / D-4 5枚同時ガチャ / D-6 ガチャ演出 / D-5 防衛ログ / D-7 状態異常ガイド / D-8 コンボヒント）
+    2. 見た目・操作感（U-1 ユーザー情報3列 / 勝率小数表示 / U-11 トースト 4種色分け / U-12 ニュース動的反映 / U-13 フィードバックフォーム / U-17 設定保存 / C系CSSトークン統一）
+    3. 不具合修正・安定化（U-1 3列崩れ cmd_B012 回収 / リファクタによる軽量化・安定化 / エラーハンドリング改善）
+  - HTML タグは既存 news の detail と同じく `<h3>`, `<p>`, `<ul><li>`, `<strong>` のみ使用。装飾クラスやカスタムタグは未使用（news.json 既存エントリが使う `class="status-tag-*"` のような既存装飾は今回対象外のため利用せず）。
+
+  ## 3. 禁止事項の遵守
+  - G-F001/G-F002/G-F003 遵守 ✓
+  - Write 前 Read 遵守（battle/index.html, news.json, hanzo_report.yaml, sasuke_report.yaml 前版を事前 Read）✓
+  - battle/assets/js/* 未変更 ✓（小太郎管轄）
+  - ルート /home/hatan/camp-schedule-app/index.html 未変更 ✓（半蔵管轄）
+  - dungeon/ 配下 未変更 ✓（軍A管轄）
+  - news.json 既存エントリ改変なし（先頭追加のみ）✓
+  - git commit 実行せず ✓
+
+  ## 4. 忍頭への申し送り
+  - battle/ 側の変更は index.html 1行 + news.json 先頭エントリ追加の計2ファイルのみ。`git diff` では
+    - `battle/index.html`: ver0.3 → ver0.4 の 1 箇所差分
+    - `battle/assets/news.json`: 先頭への新エントリ追加のみ（既存7件は無傷）
+    のはず。
+  - 小太郎（依頼3）が battle/assets/js/* を触る場合でも、本変更とは完全に独立しているためコンフリクトしない見込み。
+  - 半蔵（依頼1）のルート index.html 変更とも独立。
+  - 殿向けの最終確認ポイントは news.json 先頭エントリの detail 文面。下記 notes に detail HTML 全文を引用したので、忍頭は PR 説明等で参照可能。
+files_modified:
+  - "/home/hatan/camp-schedule-app/battle/index.html"
+  - "/home/hatan/camp-schedule-app/battle/assets/news.json"
+notes: |
+  ## 追加した news.json 先頭エントリ（殿の最終確認用・全文引用）
+
+  - date: "2026/04/16"
+  - type: "調整"
+  - title: "ver0.4 — 動作の安定化と見た目の微調整"
+  - detail（HTML全文）:
+
+  <h3>ver0.4 アップデート内容</h3><p>参加者バトルを全体的に整備し、遊びやすさと見た目を改善しました。</p><h3>ゲームの改善</h3><ul><li><strong>難易度が選べるように</strong>：スタート画面で「弱い／普通／強い」を選択できます。選んだ難易度は次回以降も引き継がれます。</li><li><strong>対戦相手のマッチング改善</strong>：実力の近い相手と当たりやすくなりました。該当者がいない場合はこれまで通り全体から選ばれます。</li><li><strong>敵のトドメ判断が賢く</strong>：命中しづらい状況でのトドメ技を避けるなど、納得感のある動きに調整しました。</li><li><strong>ガチャが5枚同時引きに</strong>：これまで1枚ずつ引いていたガチャが、5枚を一度に並べて選べるようになりました。空きスロットがあれば優先して入れ替えできます。</li><li><strong>ガチャ演出の刷新</strong>：レアリティが段階的に光っていく演出が、カクつきなく滑らかに流れるようになりました。</li><li><strong>防衛ログの通知</strong>：前回ログイン以降にあなたが防衛で戦われた履歴を、ログイン時にまとめて確認できるようになりました。</li><li><strong>状態異常ガイドを追加</strong>：「状態異常を確認」ボタンから全13種の効果を確認できます。「全て／有利／不利」でタブ切り替えも可能です。</li><li><strong>コンボヒント表示</strong>：バトル開始時に、属性の組み合わせなど立ち回りのヒントがワンポイントで表示されます。</li></ul><h3>見た目・操作感の改善</h3><ul><li><strong>ユーザー情報カードが3列表示に</strong>：通算／攻撃／防衛の成績が横並びで一目で比較できるようになりました（スマホでは縦1列に切り替わります）。</li><li><strong>勝率表示の精度アップ</strong>：勝率を小数第1位まで表示。戦績がまだ無い場合は「-」と表示されます。</li><li><strong>通知トーストの見やすさ改善</strong>：情報／成功／警告／エラーの4種で色分けされ、重要度がひと目でわかるようになりました。</li><li><strong>更新履歴の自動反映</strong>：このお知らせ一覧が自動で最新に更新されるようになり、新しいお知らせがすぐ表示されます。</li><li><strong>ご意見フォームを内蔵</strong>：★1〜5の評価とコメントをアプリ内から直接送れるフィードバックフォームを追加しました。</li><li><strong>設定の保存</strong>：BGM音量／SE音量／敵AI難易度の設定が保存され、次回起動時に復元されます。</li><li><strong>全体のデザイン統一</strong>：色・余白・角丸などを共通ルールに揃え、画面全体のまとまりが良くなりました。</li></ul><h3>不具合修正・動作の安定化</h3><ul><li><strong>3列グリッドの崩れを修正</strong>：ユーザー情報カードがPCでも縦積みになってしまう不具合を修正しました。</li><li><strong>内部の整理で動作を軽快化</strong>：読み込みや画面遷移が安定し、長時間プレイでも動作が崩れにくくなりました。</li><li><strong>エラー時の挙動を改善</strong>：通信失敗などが起きても、ゲームが止まらず分かりやすく通知するようにしました。</li></ul><p>今後もより楽しく遊んでいただけるよう改善を続けます。ご意見・ご要望はアプリ内のフィードバックフォームからどうぞ。</p>
+
+prediction:
+  estimated_difficulty: easy
+  expected_risks:
+    - "battle/index.html が CRLF 改行だった場合、Edit ツールの単純文字列置換が改行コード不一致で失敗する可能性"
+    - "news.json の既存エントリは HTML 内に多数の \" を含むため、配列再シリアライズ時にエスケープ規則が変わって diff が肥大化するリスク → 文字列挿入方式で回避する必要"
+    - "detail 文面が技術用語寄りになってしまいユーザー視点を外すリスク（特に『リファクタ35項目』『モジュール分割』等を誤って書きそうになる）"
+    - "battle/assets/js/* を誤って触ってしまい小太郎管轄を侵害するリスク"
+    - "news.json エントリの順序・既存7件の date/title/detail を意図せず改変してしまうリスク"
+
+observation:
+  actual_difficulty: easy
+  unexpected_events:
+    - "battle/index.html は CRLF 改行（\\r\\n）で保存されており、Edit ツールの old_string 一致で失敗した。Python の bytes 操作で 'ver0.3' → 'ver0.4' を UTF-8 バイト列単位で置換し、改行コードを保全した"
+    - "news.json 既存エントリは detail 内に class=\\\"prob-r\\\" 等の多数のダブルクォートを含むため、json.dump による配列全体の再シリアライズは既存整形を崩すリスクがあった。『先頭 [\\n の直後に新エントリ（2スペースインデント付き）を文字列挿入』方式で既存バイト列を一切改変せず追加に成功"
+    - "dashboard_armyB.md + 各足軽 report から抽出できた『ユーザーに見える変更』は、D-1〜D-8 の8件 + U-1/U-11/U-12/U-13/U-17 の5件 + C系CSS統一 + cmd_B012 の U-1 3列崩れ修正 の計15件強。これらを『ゲーム性／見た目・操作感／不具合修正』の3カテゴリに畳むことで簡潔かつ網羅的な detail を構成できた"
+  information_gain: |
+    CRLF ファイルの編集は Edit ツールでは失敗する（old_string が \\r\\n を含まないため）。
+    bytes.replace() + Path.write_bytes() で既存改行コードを完全保全するのが定石。
+    また、複雑な JSON の先頭にエントリ追加する場合、再シリアライズせず『[\\n の直後に文字列挿入』するアプローチが既存整形と既存エスケープを完全保持できる最小侵襲パターン。
+    Python で `json.load` による順序検証 → 文字列挿入 → 再度 `json.load` で検証、という 2段検証で安全性を担保できる。
+
+skill_candidate:
+  found: true
+  name: "minimal-invasive-json-array-prepend"
+  description: |
+    既存エントリを一切改変せず、UTF-8/LF/任意インデントの JSON 配列の先頭に新エントリを追加する定石手順。
+    手順: (1) 既存ファイルを text として読み込み先頭が `[\\n` であることをアサート (2) 新エントリを json.dumps(..., indent=2, ensure_ascii=False) で生成 (3) 全行に配列内インデント（通常2スペース）を追加 (4) `[\\n` + 新エントリ + `,\\n` + 既存残り でファイル再構築 (5) json.loads で整合検証（全件数・既存 date 列の順序一致）。
+    メリット: 既存の detail 内ダブルクォートエスケープや整形を一切崩さない。差分は新規追加行のみとなり PR レビューコストが最小。
+  reason: |
+    今回の news.json は既存 detail 内に class=\\\"prob-r\\\" 等の多数のダブルクォートを含むため、
+    json 配列全体の再シリアライズではエスケープ規則が変わって差分が肥大化する恐れがあった。
+    文字列挿入方式により、差分は新規エントリ追加分のみとなり、既存 7 件は完全に無傷で保てた。
+    同種の『履歴 JSON/YAML 先頭への追加』タスクで再利用できる。
+
+kaizen_candidate:
+  found: true
+  description: |
+    忍 instructions（shinobi.md）に『CRLF 改行ファイル編集時の定石』を追記すべき。
+    battle/index.html のように既存ファイルが CRLF で保存されている場合、Edit ツールの old_string 一致は
+    \\r\\n を含まないため失敗する。回避策として Python の bytes.replace() で UTF-8 バイト列単位の
+    置換を行い、改行コードを完全保全するパターンを明文化すると、同種タスクで即断できる。
+    併せて『編集後に file(1) や od -c で改行コードを検証せよ』という検証手順も定石化したい。
+  category: "workflow"
+  reason: |
+    Windows/Mac/Linux 混在プロジェクト（camp-schedule-app はブラウザ用静的サイト）では
+    HTML/CSS が CRLF で保存されているケースがまま存在する。
+    今回の事例を明文化しておけば、同様の失敗を早期回避できる。

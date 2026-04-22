@@ -5,28 +5,48 @@ armies:
     # 運用中はペイン死亡でズレるため、scripts/resolve_pane.sh で動的解決せよ。
     initial_shogun_pane: 0
     initial_karo_pane: 1
-    initial_ashigaru_panes: [2, 3, 4, 5, 6, 7, 8, 9]
+    ashigaru_mode: subagent  # cmd_B002で検証済み。家老がAgent toolで足軽を起動する方式。--legacy-ashigaruでtmuxペイン復活
+    initial_ashigaru_panes: [2, 3, 4, 5, 6, 7, 8, 9]  # --legacy-ashigaru時のみ使用
     instruction_set: coc_trpg
     dashboard: dashboard_armyA.md
     queue_dir: queue/armyA
+    ashigaru_count: 8
+    models:
+      shogun: opus
+      karo: opus
+      ashigaru: sonnet  # SubAgent方式ではAgent toolのmodelパラメータで指定
 
   - id: armyB
     session: armyB
     initial_shogun_pane: 0
     initial_karo_pane: 1
-    initial_ashigaru_panes: [2, 3, 4, 5, 6, 7, 8, 9]
+    ashigaru_mode: subagent  # cmd_B002で検証済み
+    initial_ashigaru_panes: [2, 3, 4, 5, 6, 7, 8, 9]  # --legacy-ashigaru時のみ使用
     instruction_set: original
     dashboard: dashboard_armyB.md
     queue_dir: queue/armyB
+    ashigaru_count: 8
+    models:
+      shogun: opus
+      karo: opus
+      ashigaru: sonnet
+
+  - id: armyC
+    session: armyC
+    # tcmd_233 (2026-04-22) で旧忍衆 (shinobi) から軍C へ統合。完全対称案(N案)採択。
+    initial_shogun_pane: 0
+    initial_karo_pane: 1
+    ashigaru_mode: subagent  # cmd_B002準拠。家老がAgent toolで足軽を起動する方式。
+    initial_ashigaru_panes: [2, 3, 4, 5, 6, 7, 8, 9]  # --legacy-ashigaru時のみ使用
+    instruction_set: original
+    dashboard: dashboard_armyC.md
+    queue_dir: queue/armyC
+    ashigaru_count: 8
+    models:
+      shogun: opus
+      karo: opus
+      ashigaru: sonnet
 
 taishogun:
   session: taishogun
   initial_pane: 0
-
-shinobi:
-  session: shinobi
-  initial_shinobicho_pane: 0
-  initial_shinobi_panes: [1, 2, 3]
-  instruction_set: shinobi
-  dashboard: dashboard_shinobi.md
-  queue_dir: queue/shinobi

@@ -1,0 +1,145 @@
+worker_id: hanzo
+task_id: scmd_001_hanzo_dungeon_hide
+parent_cmd: scmd_001
+timestamp: "2026-04-16T00:32:22"
+status: done
+result: |
+  # camp-schedule-app: dungeon 動線遮断 完了報告
+
+  ## 0. 結論
+  - ルート index.html の dungeon-button 要素を HTML コメントブロック内に封じ、DOMから完全除去
+  - assets/js/main.js の revealBattleBtn ハンドラから dungeonBtn 宣言・解禁ロジックを削除
+  - battle への動線（battle-button 解禁）は従来どおり維持
+  - toDungeonPage() 関数は残存（直接URL /dungeon/index.html へのアクセス維持のため — タスク要件）
+  - dungeon/ 配下・battle/ 配下・CSS は一切触らず（触禁遵守）
+
+  ## 1. 実施内容
+
+  ### 1-1. /home/hatan/camp-schedule-app/index.html（L51-56 付近）
+  変更前:
+  ```html
+  <!-- ▼ 新ゲームへのリンクボタン（初期は hidden） -->
+  <button class="dungeon-button hidden" style="margin-top: 1rem;" onclick="toDungeonPage()">
+      🎮 ダンジョンで遊ぶ ver α
+  </button>
+  ```
+  変更後:
+  ```html
+  <!-- dungeon-button hidden until P1 release (軍A tcmd_115 実装中) -->
+  <!--
+  <button class="dungeon-button hidden" style="margin-top: 1rem;" onclick="toDungeonPage()">
+      🎮 ダンジョンで遊ぶ ver α
+  </button>
+  -->
+  ```
+  → HTMLコメントで丸ごと囲い、DOM 要素として生成されなくなった。
+
+  ### 1-2. /home/hatan/camp-schedule-app/assets/js/main.js（L315-335 付近）
+  変更前:
+  ```js
+  // TODO: 開発モード
+  // 隠しボタン：バトルモード解禁
+  const revealBtn = document.getElementById("revealBattleBtn");
+  const battleBtn = document.querySelector(".battle-button");
+  const dungeonBtn = document.querySelector(".dungeon-button");
+
+  if (revealBtn) {
+      revealBtn.addEventListener("click", () => {
+          if (battleBtn) {
+              battleBtn.classList.remove("hidden");
+              battleBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+          if (dungeonBtn) {
+              dungeonBtn.classList.remove("hidden");
+              dungeonBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+          if (rankingArea) rankingArea.classList.remove("hidden");
+          ...
+  ```
+  変更後:
+  ```js
+  // TODO: 開発モード
+  // 隠しボタン：バトルモード解禁
+  // dungeon-button への動線は P1 リリースまで完全遮断（軍A tcmd_115 実装中）
+  const revealBtn = document.getElementById("revealBattleBtn");
+  const battleBtn = document.querySelector(".battle-button");
+
+  if (revealBtn) {
+      revealBtn.addEventListener("click", () => {
+          if (battleBtn) {
+              battleBtn.classList.remove("hidden");
+              battleBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+          if (rankingArea) rankingArea.classList.remove("hidden");
+          ...
+  ```
+  → `const dungeonBtn = ...` 宣言、および `if (dungeonBtn) { ... scrollIntoView ... }` 分岐を完全削除。
+     battle-button 解禁ロジックは一切変更せず。
+
+  ## 2. 論証（grep 結果）
+
+  ### 2-1. dungeonBtn（JS変数）
+  - /home/hatan/camp-schedule-app 配下: **0件**
+  - → revealBattleBtn ハンドラからは dungeon-button 要素を参照するコードが完全消滅。
+     隠しボタンを押しても dungeon-button には classList.remove('hidden') が呼ばれない。
+
+  ### 2-2. dungeon-button（HTML class）
+  残存箇所はすべて実行に影響しない:
+  - index.html L51: HTMLコメントテキスト `<!-- dungeon-button hidden until P1 release ... -->`
+  - index.html L53: HTMLコメント `<!-- ... <button class="dungeon-button ..."> ... -->` ブロック内部
+  - main.js L317: JS コメント `// dungeon-button への動線は P1 リリースまで完全遮断 ...`
+  - assets/css/style.css L210, L226, L233, L238: CSS 定義（タスク指示により触らず。対応DOM要素が存在しないため害なし）
+
+  ### 2-3. JS構文検証
+  - `node --check /home/hatan/camp-schedule-app/assets/js/main.js` → **JS syntax OK**
+
+  ## 3. 完了条件チェック
+  - [x] トップページに dungeon への動線が一切存在しない
+        → dungeon-button 要素は DOM 化されず、隠しボタン押下後も生成されない
+  - [x] battle への動線は従来どおり機能
+        → revealBattleBtn ハンドラ内の battle-button 解禁ロジックは無変更
+  - [x] 直接 URL /dungeon/ は引き続きアクセス可能
+        → dungeon/ 配下は未編集、toDungeonPage() 関数定義も残存
+  - [x] 変更ファイルの差分概要を報告に記載
+
+  ## 4. 禁止事項の遵守
+  - dungeon/ 配下 未編集 ✓
+  - battle/ 配下 未編集 ✓
+  - assets/js/shared/ 未編集 ✓
+  - CSS (style.css) 未編集 ✓
+  - git commit 未実行 ✓（忍頭が最後にまとめて PR を切る想定）
+  - SN-F001〜SN-F005 遵守 ✓（本報告は queue/shinobi/reports/ 経由、忍頭宛）
+
+files_modified:
+  - "/home/hatan/camp-schedule-app/index.html"
+  - "/home/hatan/camp-schedule-app/assets/js/main.js"
+notes: |
+  両ファイルとも CRLF 改行だったため、Edit ツールではなく Python の binary read/write で
+  CRLF を保持したまま置換した。JS構文は node --check で検証済み。
+  toDungeonPage() 関数は直接URLアクセス維持のため意図的に残置（タスク要件）。
+
+prediction:
+  estimated_difficulty: easy
+  expected_risks:
+    - "dungeon-button と battle-button が同一JSブロック(revealBattleBtn ハンドラ)で扱われているため、battle 側を誤って壊すリスク"
+    - "dungeonBtn 変数宣言を残したまま classList.remove の行だけ消すと未使用変数が残る程度で害はないが、変数自体も除去する方が綺麗"
+    - "軍A tcmd_115 の dungeon/ 配下や battle/ 配下を誤って触禁違反するリスク"
+
+observation:
+  actual_difficulty: easy
+  unexpected_events:
+    - "対象ファイルが CRLF 改行だったため、Edit ツールの old_string 完全一致が失敗（LF で正規化されるため）。Python の binary mode で read/write/replace する方針に切り替えて解決した。"
+    - "dungeon-button の CSS 定義 (style.css L210-) が残っているが、対応 DOM 要素が消えたため実害なし。タスク指示『CSS は触らなくてよい』に従い未編集。"
+  information_gain: "CRLF 改行ファイルに対しては Edit ツール（LF 前提）は使えない。binary mode Python での置換が安全。将来 Windows 系プロジェクトや Vercel にデプロイする静的サイトを触る忍衆タスクで共通的に役立つ知見。"
+
+skill_candidate:
+  found: false
+  name: null
+  description: null
+  reason: null
+
+kaizen_candidate:
+  found: true
+  description: "CRLF 改行ファイルは Edit ツール（内部で LF 正規化されるため old_string 完全一致が失敗する）では編集できない。base.md §6 に『CRLF ファイルは Python binary mode で read/replace/write する』旨の補足を追記する価値あり。"
+  category: "workflow"
+  reason: "Windows 由来のプロジェクトや Vercel にデプロイする静的サイトでは CRLF が珍しくない。Edit ツールが謎の理由で失敗した時の原因特定と対処法を instructions/base.md の『6. ファイル操作の鉄則』に追記すれば、今後同じ罠にハマる忍衆・足軽を救える。"
