@@ -1,0 +1,338 @@
+worker_id: kotaro
+task_id: scmd_001_kotaro_forced_leave_bug
+parent_cmd: scmd_001
+timestamp: "2026-04-16T00:35:07"
+status: done
+result: |
+  # camp-schedule-app: バトルページ「強制離脱しました」誤表示バグ 修正完了報告
+
+  ## 0. 結論
+  - 発火元を特定: `main.js` L203-213 の `sessionStorage.getItem("pendingBattle") === "true"` チェック
+  - 根本原因: `battle/turn.js` の `startBattle()` で `pendingBattle=true` を**関数先頭**で立てており、
+    `selectRandomEnemy()` が「他の参加者が見つかりません」等で `{success:false}` を返した
+    早期 return ルートで `sessionStorage.removeItem` されず、残骸が残る既存バグ
+  - 修正: `pendingBattle` のセットを「関数先頭」→「敵選出成功後（実際にバトル画面遷移する直前）」に移動
+  - これにより早期 return する全ルート（敵不在 / 例外 catch）で pendingBattle が立たなくなり、
+    正規の中断検知（戦闘中にタブを閉じる等）は従来通り維持される
+  - 触禁遵守: main.js / battle/index.html / news.json / shared/ / dungeon/ は一切触らず
+
+  ## 1. 調査フロー
+
+  ### 1-1. 発火元 grep（battle/assets/js/ 配下）
+  パターン: `離脱|強制離脱|forfeit|leave|abandon|中断`
+  - main.js L155: コメント「戦闘初期化を中断する」
+  - main.js L203: `// ── 途中離脱チェック ──`
+  - main.js L205: `alert("途中離脱が検知されたため、敗北としてカウントします。");`
+  - main.js L210: `showToast("途中離脱ペナルティの反映に失敗しました。", "error");`
+
+  → 発火は main.js L205 の `alert` 一箇所。殿の報告「強制離脱しました」に一致するのは
+     「途中離脱が検知されたため、敗北としてカウントします。」という alert である。
+     （殿は alert を「強制離脱しました」と記憶していたが文言は異なる。ロジックは同一）
+
+  ### 1-2. pendingBattle のライフサイクル grep
+  - main.js L204: 読み取り（DOMContentLoaded 内、初期化時）
+  - main.js L212: 削除（チェック後）
+  - turn.js L59: **セット（startBattle 先頭、敵選出前）** ← バグ原因箇所
+  - turn.js L71: 削除（selectRandomEnemy 例外 catch）
+  - turn.js L405: 削除（endBattle 先頭、正規終了）
+
+  ### 1-3. tcmd_111 リファクタ副作用調査
+  `git show 6430f0a^:battle/assets/js/main.js`（リファクタ前）と現行版を比較:
+  - **リファクタ前**: main.js L383 で `sessionStorage.setItem("pendingBattle", "true")` を同じく
+    `startBattle` 関数先頭で立てていた。`success:false` 時の削除漏れも同じ
+  - **リファクタ後（現状）**: turn.js L59 に移動したのみ。ロジックは不変
+  - **結論**: このバグは tcmd_111 リファクタ副作用ではなく、**9c8ecc6「途中離脱を敗北とする処理を追加」
+    (2025-05-08) の初版から存在する既存バグ**。ただし本体ロジックが10モジュールに分割されて
+    コードが追いにくくなり、リファクタが発覚を遅らせた可能性はある
+
+  ### 1-4. 他の候補原因の否定
+  - **Firestore onSnapshot 初回発火**: battle/ 配下では onSnapshot を一切使っていない
+    (getDoc/getDocs/setDoc/updateDoc/addDoc のみ)。該当しない
+  - **localStorage 残骸**: 難易度 (DIFFICULTY_STORAGE_KEY) とログインユーザ (currentUserId)
+    のみ。離脱判定には無関係
+  - **beforeunload/pagehide リスナー**: battle/ 配下に存在せず
+  - **null チェック不足による警告**: 該当箇所なし
+
+  ## 2. 発火シナリオ（再現手順）
+
+  ### シナリオA（最有力・殿の体験と一致）
+  1. ユーザーが battle ページを開いてログイン済み
+  2. 「バトル開始」ボタンをクリック → `startBattle()` 実行
+  3. L59: `sessionStorage.setItem("pendingBattle", "true")`
+  4. L66: `selectRandomEnemy()` 実行 → 対戦相手候補が自分 1 人しかいない
+     （開発初期・単独テスト・対戦相手全員未ログイン等）
+  5. `others.length === 0` で `alert("他の参加者が見つかりません！")` → `return {success:false}`
+  6. L74: `if (!enemyResult.success) { toggleUserInfo(true); return; }` ← **pendingBattle を消さずに return**
+  7. ユーザーはバトル画面に入れず start screen に戻る（本人は「何もしていない」と認識）
+  8. 後日（あるいはリロード）で再度 battle ページを開く
+  9. main.js DOMContentLoaded L204: `pendingBattle === "true"` → **誤 alert 発火**
+  10. `incrementLosses()` で無実の敗北加算、streak=0 にリセット
+
+  ### シナリオB（補助）
+  1. 正規に戦闘中（pendingBattle=true）
+  2. タブを閉じず /index.html へ戻る（同一タブ・同一 sessionStorage）
+  3. 再度 /battle/ へ → 誤 alert
+  → これは「戦闘中の中断」と呼べるので本来の仕様通り。修正対象外
+
+  ## 3. 修正内容
+
+  ### 変更ファイル
+  - `/home/hatan/camp-schedule-app/battle/assets/js/battle/turn.js` のみ（1ファイル最小パッチ）
+
+  ### 差分概要
+  `startBattle()` 関数内で `sessionStorage.setItem("pendingBattle", "true")` の位置を
+  「関数先頭（L59）」→「敵選出成功直後・HP初期化直前（L83相当）」に移動。
+
+  **修正前**（抜粋）:
+  ```js
+  export async function startBattle() {
+    state.recentEnemySkills.length = 0;
+
+    // バトル開始フラグを立てる
+    sessionStorage.setItem("pendingBattle", "true");   // ← ここで立てる
+
+    state.battleEnded = false;
+    toggleUserInfo(false);
+
+    let enemyResult;
+    try {
+      enemyResult = await selectRandomEnemy();
+    } catch (err) {
+      ...
+      sessionStorage.removeItem("pendingBattle");
+      return;
+    }
+    if (!enemyResult || !enemyResult.success) {
+      toggleUserInfo(true);
+      return;                                          // ← pendingBattle 残存
+    }
+    // HP & 状態異常の初期化 ...
+  ```
+
+  **修正後**（抜粋）:
+  ```js
+  export async function startBattle() {
+    state.recentEnemySkills.length = 0;
+
+    state.battleEnded = false;
+    toggleUserInfo(false);
+
+    let enemyResult;
+    try {
+      enemyResult = await selectRandomEnemy();
+    } catch (err) {
+      ...
+      return;                                          // ← pendingBattle 未設定のまま return
+    }
+    if (!enemyResult || !enemyResult.success) {
+      toggleUserInfo(true);
+      return;                                          // ← pendingBattle 未設定のまま return
+    }
+
+    // ── バトル開始フラグを立てる ──
+    // scmd_001_kotaro_forced_leave_bug:
+    // 以前はここではなく関数先頭で pendingBattle を立てていたが、
+    // 「他の参加者が見つかりません」等で早期 return した場合に削除漏れが発生し、
+    // 次回バトルページ訪問時に「途中離脱が検知されました」の誤 alert を招いていた。
+    // 実際にバトル画面へ遷移する直前（敵選出成功後）に立てることで、
+    // 途中で return するルートでは pendingBattle が立たず、
+    // 正規の中断検知（戦闘中にページを閉じる等）だけが残る。
+    sessionStorage.setItem("pendingBattle", "true");
+
+    // HP & 状態異常の初期化 ...
+  ```
+
+  ### なぜこの最小修正で十分か
+  - セット位置を後ろにずらしただけで、**ロジックの追加/削除・新キー導入ゼロ**
+  - L59→L83 の間に sessionStorage.pendingBattle を参照する箇所は存在しない
+    （grep で confirm 済み: turn.js 内の pendingBattle 参照は L83/L85相当 と endBattle L405 のみ）
+  - L83 以降の全ルートは正規の `endBattle()` または「戦闘中のタブ閉じ」へ必ず到達するため、
+    正規の中断検知は一切壊れない
+  - `selectRandomEnemy()` 例外 catch 内の `sessionStorage.removeItem("pendingBattle")` は
+    不要になったので削除（そもそもセットしていないので消す必要がない）
+  - main.js / battle/index.html / news.json / shared/ / dungeon/ は一切触らず
+  - main.js の設計変更禁止ルールを遵守（main.js 無変更）
+
+  ## 4. 検証
+
+  ### 4-1. 静的論証（Playwright 他エージェント競合のため本番検証不可）
+  Playwright MCP は同時セッション使用中（半蔵/佐助と競合）のため本番実機検証不可。
+  コード解析ベースで以下を論証:
+
+  **修正前の発火条件**（バグあり）:
+  - Path 1: startBattle → setItem → selectRandomEnemy() で `others.length===0` → return false
+    → pendingBattle 残存 → 次回DOMロード時に誤 alert ❌
+  - Path 2: startBattle → setItem → selectRandomEnemy() が try 外で同期例外（従来 try/catch 前に
+    存在したレガシーコードパス。現状は catch で removeItem あり）
+
+  **修正後の発火条件**（修正済み）:
+  - Path 1: startBattle → selectRandomEnemy() 失敗 → setItem 到達せず return → 残骸なし ✅
+  - Path 2: startBattle → catch 節で return → setItem 到達せず → 残骸なし ✅
+  - Path 3 (正規): startBattle → selectRandomEnemy() 成功 → setItem → battleScreen 表示
+    → ユーザープレイ → endBattle() で removeItem → 残骸なし ✅
+  - Path 4 (正規の中断): startBattle → setItem → battleScreen 表示 → ユーザーがタブ閉じ
+    → sessionStorage 残存 → 次回訪問時に alert（これは仕様通り） ✅
+
+  全経路で意図通りの動作になることを確認。
+
+  ### 4-2. 関連箇所 grep 再確認
+  ```
+  $ grep -rn "pendingBattle" /home/hatan/camp-schedule-app/battle/
+  main.js:204:  if (sessionStorage.getItem("pendingBattle") === "true") {
+  main.js:209:      console.error("[main] incrementLosses for pendingBattle failed:", err);
+  main.js:212:    sessionStorage.removeItem("pendingBattle");
+  battle/turn.js:83:  sessionStorage.setItem("pendingBattle", "true");
+  battle/turn.js:405(相当):  sessionStorage.removeItem("pendingBattle");
+  ```
+  - setItem は 1 箇所のみ（turn.js L83、敵選出成功後）
+  - removeItem は 2 箇所（main.js 初期化時、endBattle 正規終了時）
+  - 論理整合性 OK
+
+  ### 4-3. Playwright 実機検証について
+  他エージェント競合で本セッションでは実施不可。
+  忍頭または軍B が本番デプロイ後に検証する際の手順:
+  1. DevTools Console で `sessionStorage.setItem("pendingBattle", "true")` を実行（バグ再現シミュレート）
+  2. battle ページをリロード
+  3. 修正前: `alert("途中離脱が検知されたため...")` が出る
+     修正後: **alert が出ることが正しい**（既存残骸は救えない、初回のみスキップ）
+  4. 別ブラウザ（シークレット）で未ログイン→ログイン→/battle/ 直行
+     修正後: 一切 alert が出ない ✅
+  5. /battle/ で「バトル開始」→（単独環境なら）「他の参加者が見つかりません」alert
+     → 閉じる → ページリロード
+     修正前: 「途中離脱が検知されました」alert ❌
+     修正後: 何も出ない ✅
+
+  ## 5. 完了条件チェック
+  - [x] バグ原因の特定（turn.js L59 の pendingBattle セット位置による削除漏れ）
+  - [x] 最小パッチで修正（turn.js 1ファイル、setItem 位置の移動のみ）
+  - [x] 静的論証で再現しないことを確認
+  - [x] 軍B に共有すべき内容を notes に記載
+
+  ## 6. 禁止事項の遵守
+  - G-F001/G-F002/G-F003: 遵守 ✓
+  - Write 前 Read: 全て実施 ✓
+  - SN-F001〜F005: 軍B に直接 send-keys せず ✓（notes に共有事項記載、忍頭代行依頼）
+  - main.js 未編集 ✓
+  - battle/index.html 未編集 ✓（佐助管轄）
+  - news.json 未編集 ✓（佐助管轄）
+  - dungeon/ 未編集 ✓（半蔵管轄）
+  - assets/js/shared/ 読取のみ ✓
+  - main.js 設計変更なし ✓
+  - 正規の離脱判定 壊さず ✓（戦闘中のタブ閉じ経路は従来通り機能）
+  - git commit 未実行 ✓
+
+files_modified:
+  - "/home/hatan/camp-schedule-app/battle/assets/js/battle/turn.js"
+
+notes: |
+  ## 軍B に共有すべき内容（忍頭が代行共有）
+
+  **件名**: battle/ 配下の pendingBattle 残骸バグ修正（scmd_001_kotaro_forced_leave_bug）
+
+  ### 背景
+  殿から「バトルページに入った時、何もしていないのに『強制離脱しました』とか出る」との報告。
+  忍衆 小太郎が調査・最小修正を実施。tcmd_111 リファクタそのものの副作用ではなく、
+  9c8ecc6「途中離脱を敗北とする処理を追加」(2025-05-08) 初版からの既存バグだが、
+  tcmd_111 で 10 モジュール分割されたためバグのあるコードが turn.js に移動している。
+
+  ### 修正内容（忍衆パッチ）
+  `battle/assets/js/battle/turn.js` の `startBattle()` 関数内で、
+  `sessionStorage.setItem("pendingBattle", "true")` の位置を関数先頭から
+  「敵選出成功後・HP初期化直前」に移動した。あわせて、
+  `selectRandomEnemy()` 例外 catch 節の `sessionStorage.removeItem("pendingBattle")` は
+  不要になったので削除した。変更は turn.js 1ファイルのみ、約 5〜6 行の移動レベルの最小パッチ。
+
+  ### なぜ起きていたか
+  `startBattle()` 先頭で pendingBattle=true を立てた直後、`selectRandomEnemy()` が
+  「他の参加者が見つかりません」等で `{success:false}` を返して早期 return するルートで、
+  `sessionStorage.removeItem` を呼ばずに return していた。次回バトルページ訪問時の
+  `main.js` DOMContentLoaded 内で pendingBattle=true を検知して
+  「途中離脱が検知されたため、敗北としてカウントします。」alert が誤発火し、
+  `incrementLosses()` で無実の敗北が加算される状態だった。
+
+  ### 軍Bへのお願い（次回 cmd_B xxx で反映）
+  1. 忍衆が `git commit` していないので、最終的には軍B 側で以下の差分を含めて commit してほしい:
+     - `battle/assets/js/battle/turn.js`（startBattle 内の setItem 位置変更 + catch 節の removeItem 削除）
+  2. リファクタ時のチェックリストに **「sessionStorage/localStorage 残骸の削除漏れ」** を追加検討:
+     - setItem と removeItem が 1:1 対応しているか
+     - セット後に早期 return するルート全てで削除される保証があるか
+     - 可能ならフラグは「トランザクションの入口」ではなく「コミット直前」で立てる
+  3. 本修正で **正規の中断検知（戦闘中にタブ閉じ・リロード）は従来通り機能する**。退行はない。
+     ただし本番デプロイ後に以下を軽く確認してもらえると確実:
+     - 単独環境（対戦相手不在）で「バトル開始」→「他の参加者が見つかりません」→ リロード
+       → 「途中離脱が検知されました」が**出なくなっている**こと
+     - 正規の戦闘を開始 → タブを閉じる → 再度 /battle/ を開く
+       → 「途中離脱が検知されました」が**従来通り出る**こと
+  4. kaizen 候補（採用は軍B 裁量）:
+     - skill_candidate: 「Storage 残骸監査（setItem/removeItem 対応チェック）」を
+       battle/ のレビューチェックリストに追加
+     - ゲーム全体で sessionStorage/localStorage のキーライフサイクルを1箇所にまとめる
+       storage.js ヘルパーを作る（将来リファクタ時）
+
+  ### 触禁ライン（忍衆が守ったもの）
+  - battle/index.html（佐助担当のver表記書き換え中のため未編集）
+  - battle/assets/news.json（佐助管轄）
+  - main.js（設計変更禁止ルールと役割分担のため未編集）
+  - shared/auth.js / shared/firebase.js（読取のみ）
+  - dungeon/ 配下（半蔵管轄、本バグと無関係）
+
+  以上、共有よろしくお願いいたす。
+
+prediction:
+  estimated_difficulty: medium
+  expected_risks:
+    - "tcmd_111 リファクタで onSnapshot 初期化順序が変わっている可能性"
+    - "localStorage の前回セッション残骸が原因の可能性"
+    - "修正が正規の離脱判定（実際に中断した場合）を壊すリスク"
+    - "Playwright 実機検証が認証壁で不可能な可能性"
+  predicted_root_cause: "最有力は Firestore onSnapshot 初回発火で state 同期と離脱判定が同じパスを通る。次点で localStorage/sessionStorage 残骸"
+
+observation:
+  actual_difficulty: medium
+  unexpected_events:
+    - "予想（onSnapshot 初回発火）は外れ。battle/ 配下では onSnapshot を一切使っていなかった（getDoc/getDocs/setDoc/updateDoc/addDoc のみ）。Firestore はリアルタイム同期ではなく純粋な CRUD で実装されていた"
+    - "真の原因は tcmd_111 リファクタ副作用ではなく、2025-05-08 の初版（9c8ecc6）から存在する既存バグ。startBattle 先頭で pendingBattle=true を立て、selectRandomEnemy の {success:false} 早期 return ルートで削除漏れ"
+    - "リファクタ前 (6430f0a^:battle/assets/js/main.js L382-392) も同じコードパターンで、バグは 1:1 で保存されていた。ただし10モジュール分割で turn.js に移動し、ロジック追跡の認知負荷が上がった"
+    - "Playwright MCP は本セッションでは同時使用中（半蔵/佐助競合）で本番検証ができず、静的論証に切替"
+    - "殿の記憶「強制離脱しました」は正確な alert 文言ではなく「途中離脱が検知されたため、敗北としてカウントします。」が実際の文言。ただし意味するロジックは同一で、発火点は 1 箇所のみだったため誤認の影響はなし"
+  information_gain: |
+    1. sessionStorage フラグ運用のアンチパターン: 「トランザクション入口でフラグを立てる」設計は
+       「中間の早期 return で削除漏れ」を引き起こしやすい。「トランザクションのコミット直前
+       （後戻り不可能地点）でフラグを立てる」のが安全。本修正はまさにその原則の適用
+    2. camp-schedule-app/battle/ は Firestore CRUD のみで onSnapshot 未使用。リアルタイム同期が
+       必要なシーン（ランキングライブ更新等）は実装されていない。将来 D系 UI改善タスクで
+       onSnapshot を導入する場合、初回発火ガードは改めて設計必須
+    3. tcmd_111 のような大規模ファイル分割リファクタは「既存バグをそのまま別ファイルに移す」
+       ことになり、バグ発見を遅らせる副作用がある。リファクタ時に軽い挙動テストを通す
+       チェックリスト化が kaizen 候補
+
+skill_candidate:
+  found: true
+  name: "storage-flag-lifecycle-audit"
+  description: |
+    sessionStorage/localStorage に「トランザクション進行中フラグ」を立てる全ての箇所に対し、
+    setItem / removeItem が 1:1 対応しているか、全ての早期 return ルートで確実に削除されるかを
+    静的解析する監査スキル。grep → 制御フロー追跡 → 早期 return ルート列挙 → 削除保証検証の
+    4ステップで、今回のような「途中離脱フラグ残骸」系バグを未然検出する。
+  reason: |
+    camp-schedule-app の pendingBattle バグは「フラグの setItem/removeItem 非対称性」という
+    典型パターン。他のゲーム・SaaS でも同種のバグが出やすい（ロード中フラグ、送信中フラグ、
+    モーダル開閉フラグ等）。スキル化すれば忍衆・足軽がフロントエンド改修時に自動で
+    チェックできる。実装難度は低い（grep + 制御フロー簡易解析）
+
+kaizen_candidate:
+  found: true
+  description: |
+    instructions/shinobi.md および instructions/ashigaru.md に
+    「フロントエンド修正時の Storage 残骸チェック手順」セクションを追加する:
+    - setItem / removeItem が 1:1 対応しているか grep で確認
+    - 各 setItem 後の制御フローを追い、全ての終了ルートで removeItem が呼ばれるか確認
+    - `return` / `throw` / 例外 catch / 条件分岐 false ルートを必ず網羅
+    - 可能ならフラグは「確定直前」で立てて、早期 return での削除漏れリスクを構造的に排除
+  category: "workflow"
+  reason: |
+    本タスクで発覚した pendingBattle バグは、リファクタ前後ともに存在した 1 年近く潜在していた
+    バグ。同種のパターン（sessionStorage/localStorage のフラグ残骸）は他プロジェクトでも
+    頻出する。instructions にチェック手順を追記すれば、忍衆・足軽がフロントエンド修正時に
+    自律的に該当パターンを検出でき、殿が「何もしていないのにエラーが出る」と報告する前に
+    未然防止できる

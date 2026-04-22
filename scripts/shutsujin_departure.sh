@@ -5,15 +5,15 @@
 # 使い方:
 #   ./scripts/shutsujin_departure.sh           # 全起動（セッション作成 + Claude Code起動）
 #   ./scripts/shutsujin_departure.sh -c        # クリーンスタート（キューリセット）
-#   ./scripts/shutsujin_departure.sh -k        # 決戦の陣（全足軽Opus Thinking）
 #   ./scripts/shutsujin_departure.sh -s        # セットアップのみ（Claude起動なし）
 #   ./scripts/shutsujin_departure.sh -t        # Windows Terminal 3タブ展開
 #   ./scripts/shutsujin_departure.sh -h        # ヘルプ表示
 #
 # 構成:
 #   taishogun セッション (1ペイン): 大将軍
-#   armyA セッション (10ペイン):    将軍A + 家老A + 足軽A1-A8
-#   armyB セッション (10ペイン):    将軍B + 家老B + 足軽B1-B8
+#   armyA セッション (2ペイン):     将軍A + 家老A（足軽はSubAgent）
+#   armyB セッション (2ペイン):     将軍B + 家老B（足軽はSubAgent）
+#   ※ --legacy-ashigaru で旧10ペイン構成（将軍+家老+足軽×8）
 
 set -euo pipefail
 
@@ -30,8 +30,7 @@ MODEL_SHOGUN="opus"
 MODEL_KARO="opus"
 MODEL_ASHIGARU_SONNET="sonnet"
 MODEL_ASHIGARU_OPUS="opus"
-MODEL_SHINOBICHO="opus"
-MODEL_SHINOBI="opus"
+# MODEL_SHINOBICHO / MODEL_SHINOBI は tcmd_233 で廃止 (軍C に統合、MODEL_SHOGUN / MODEL_KARO / MODEL_ASHIGARU_* を流用)
 
 # ============================================================
 # 1. read_settings() — config/settings.yaml から設定読み取り
@@ -54,18 +53,16 @@ read_settings() {
 SETUP_ONLY=false
 OPEN_TERMINAL=false
 CLEAN_MODE=false
-KESSEN_MODE=false
 SHELL_OVERRIDE=""
+ARMY_MODE="all"  # tcmd_233 以降は 3軍(armyA/B/C) がデフォルト。旧 "both" は軍A+軍Bのみ(互換維持)
+LEGACY_SHINOBI=false  # tcmd_233 で廃止。指定されても警告を出して無視
+LEGACY_ASHIGARU=false
 
 parse_options() {
     while [[ $# -gt 0 ]]; do
         case $1 in
             -c|--clean)
                 CLEAN_MODE=true
-                shift
-                ;;
-            -k|--kessen)
-                KESSEN_MODE=true
                 shift
                 ;;
             -s|--setup-only)
@@ -85,6 +82,33 @@ parse_options() {
                     exit 1
                 fi
                 ;;
+            --army)
+                if [[ -n "${2:-}" && "$2" != -* ]]; then
+                    case "$2" in
+                        armyA|armyB|armyC|both|all|minimal)
+                            ARMY_MODE="$2"
+                            ;;
+                        *)
+                            echo "エラー: --army オプションには armyA, armyB, armyC, both, all, minimal のいずれかを指定してください（指定値: $2）"
+                            exit 1
+                            ;;
+                    esac
+                    shift 2
+                else
+                    echo "エラー: --army オプションには armyA, armyB, armyC, both, all, minimal のいずれかを指定してください"
+                    exit 1
+                fi
+                ;;
+            --legacy-shinobi)
+                # Deprecated alias: tcmd_233 で忍衆は軍Cに統合済み。
+                # 後方互換のため残すが無効化する。
+                echo "warn: --legacy-shinobi は tcmd_233 で廃止済みです (忍衆 → 軍C 統合)。無視して続行します。" >&2
+                shift
+                ;;
+            --legacy-ashigaru)
+                LEGACY_ASHIGARU=true
+                shift
+                ;;
             -h|--help)
                 echo ""
                 echo "🏯 multi-agent-shogun 出陣スクリプト（大将軍+2軍団制）"
@@ -94,37 +118,49 @@ parse_options() {
                 echo "オプション:"
                 echo "  -c, --clean         キューとダッシュボードをリセットして起動（クリーンスタート）"
                 echo "                      未指定時は前回の状態を維持して起動"
-                echo "  -k, --kessen        決戦の陣（全足軽をOpus Thinkingで起動）"
-                echo "                      未指定時は平時の陣（足軽1-4=Sonnet, 足軽5-8=Opus）"
                 echo "  -s, --setup-only    tmuxセッションのセットアップのみ（Claude起動なし）"
                 echo "  -t, --terminal      Windows Terminal で3タブ展開"
                 echo "  -shell, --shell SH  シェルを指定（bash または zsh）"
                 echo "                      未指定時は config/settings.yaml の設定を使用"
+                echo "  --army MODE         起動する軍を指定:"
+                echo "                        armyA   — 大将軍 + 軍A単独起動"
+                echo "                        armyB   — 大将軍 + 軍B単独起動"
+                echo "                        armyC   — 大将軍 + 軍C単独起動"
+                echo "                        all     — 全軍（A+B+C）起動（デフォルト）"
+                echo "                        both    — 旧互換: 軍A+軍B起動（軍Cはスキップ）"
+                echo "                        minimal — 大将軍 + 将軍A + 家老A（最小構成）"
+                echo "  --legacy-ashigaru   足軽を旧tmuxペイン方式で起動（デフォルトはSubAgent方式=ペインなし）"
+                echo "  --legacy-shinobi    【非推奨】tcmd_233 で忍衆は軍Cに統合済み。指定しても無視される"
                 echo "  -h, --help          このヘルプを表示"
                 echo ""
                 echo "例:"
-                echo "  ./shutsujin_departure.sh              # 前回の状態を維持して出陣"
+                echo "  ./shutsujin_departure.sh              # 前回の状態を維持して出陣（両軍）"
                 echo "  ./shutsujin_departure.sh -c           # クリーンスタート（キューリセット）"
                 echo "  ./shutsujin_departure.sh -s           # セットアップのみ（手動でClaude起動）"
                 echo "  ./shutsujin_departure.sh -t           # 全エージェント起動 + ターミナルタブ展開"
-                echo "  ./shutsujin_departure.sh -k           # 決戦の陣（全足軽Opus Thinking）"
-                echo "  ./shutsujin_departure.sh -c -k        # クリーンスタート＋決戦の陣"
                 echo "  ./shutsujin_departure.sh -shell zsh   # zsh用プロンプトで起動"
+                echo "  ./shutsujin_departure.sh --army armyA  # 大将軍+軍A単独起動"
+                echo "  ./shutsujin_departure.sh --army minimal # 最小構成起動"
                 echo ""
-                echo "セッション構成（21ペイン）:"
+                echo "セッション構成（--army all: 7ペイン、SubAgent方式）:"
                 echo "  taishogun: 大将軍 (1ペイン)   — Opus"
-                echo "  armyA:     将軍A + 家老A + 足軽A1-A8 (10ペイン)"
-                echo "  armyB:     将軍B + 家老B + 足軽B1-B8 (10ペイン)"
+                echo "  armyA:     将軍A + 家老A (2ペイン) — 足軽はSubAgent"
+                echo "  armyB:     将軍B + 家老B (2ペイン) — 足軽はSubAgent"
+                echo "  armyC:     将軍C + 家老C (2ペイン) — 足軽はSubAgent"
+                echo "  ※ --legacy-ashigaru で足軽tmuxペイン復活（各軍10ペイン = 31ペイン合計）"
                 echo ""
-                echo "陣形:"
-                echo "  平時の陣（デフォルト）: 足軽1-4=Sonnet Thinking, 足軽5-8=Opus Thinking"
-                echo "  決戦の陣（--kessen）:   全足軽=Opus Thinking"
+                echo "セッション構成（--army minimal: 3ペイン）:"
+                echo "  taishogun: 大将軍 (1ペイン)   — Opus"
+                echo "  armyA:     将軍A + 家老A (2ペイン) — 足軽はSubAgent"
+                echo ""
+                echo "陣形: 足軽1=Sonnet, 足軽2-8=Opus"
                 echo ""
                 echo "エイリアス:"
                 echo "  csst  → cd $BASE_DIR && ./scripts/shutsujin_departure.sh"
                 echo "  cst   → tmux attach-session -t taishogun"
                 echo "  csa   → tmux attach-session -t armyA"
                 echo "  csb   → tmux attach-session -t armyB"
+                echo "  csc   → tmux attach-session -t armyC"
                 echo ""
                 exit 0
                 ;;
@@ -224,11 +260,7 @@ ASHIGARU_EOF
     echo ""
 
     # 陣形表示
-    if [ "$KESSEN_MODE" = true ]; then
-        echo -e "  \033[1;31m⚔  決戦の陣 — 全足軽 Opus Thinking！\033[0m"
-    else
-        echo -e "  \033[1;33m🏯 平時の陣 — 足軽1-4: Sonnet, 足軽5-8: Opus\033[0m"
-    fi
+    echo -e "  \033[1;33m🏯 陣形 — 足軽1: Sonnet, 足軽2-8: Opus\033[0m"
     echo ""
 }
 
@@ -238,11 +270,13 @@ ASHIGARU_EOF
 cleanup_sessions() {
     log_info "既存の陣を撤収中..."
 
-    # 大将軍+2軍団セッション
+    # 大将軍+3軍団セッション
     tmux kill-session -t taishogun 2>/dev/null && log_info "  └─ taishogun陣、撤収完了" || true
     tmux kill-session -t armyA 2>/dev/null && log_info "  └─ armyA陣、撤収完了" || true
     tmux kill-session -t armyB 2>/dev/null && log_info "  └─ armyB陣、撤収完了" || true
-    tmux kill-session -t shinobi 2>/dev/null && log_info "  └─ shinobi陣、撤収完了" || true
+    tmux kill-session -t armyC 2>/dev/null && log_info "  └─ armyC陣、撤収完了" || true
+    # 旧 shinobi セッション (tcmd_233 で廃止) が残っていれば撤収
+    tmux kill-session -t shinobi 2>/dev/null && log_info "  └─ 旧shinobi陣、撤収完了（レガシー）" || true
 
     sleep 0.5
 }
@@ -259,7 +293,7 @@ backup_and_clean() {
     NEED_BACKUP=false
 
     # 旧データの存在チェック
-    for army in armyA armyB; do
+    for army in armyA armyB armyC; do
         if [ -d "$BASE_DIR/queue/$army" ]; then
             if [ "$(ls -A "$BASE_DIR/queue/$army/tasks/" 2>/dev/null)" ] || \
                [ -f "$BASE_DIR/queue/$army/shogun_to_karo.yaml" ]; then
@@ -273,13 +307,14 @@ backup_and_clean() {
         cp -r "$BASE_DIR/queue/" "$BACKUP_DIR/" 2>/dev/null || true
         cp "$BASE_DIR/dashboard_armyA.md" "$BACKUP_DIR/" 2>/dev/null || true
         cp "$BASE_DIR/dashboard_armyB.md" "$BACKUP_DIR/" 2>/dev/null || true
+        cp "$BASE_DIR/dashboard_armyC.md" "$BACKUP_DIR/" 2>/dev/null || true
         log_info "前回の記録をバックアップ: $BACKUP_DIR"
     fi
 
     log_info "前回の軍議記録を破棄中..."
 
     # 軍別キューリセット
-    for army in armyA armyB; do
+    for army in armyA armyB armyC; do
         local queue_dir="$BASE_DIR/queue/$army"
         mkdir -p "$queue_dir/tasks" "$queue_dir/reports" "$queue_dir/archive"
 
@@ -296,9 +331,15 @@ backup_and_clean() {
         echo "archive: []" > "$queue_dir/kaizen_archive.yaml"
 
         # 足軽タスク・レポートファイルリセット
-        local suffix="${army: -1}"  # A or B
+        local suffix="${army: -1}"  # A / B / C
         for i in $(seq 1 8); do
-            cat > "$queue_dir/tasks/ashigaru${i}.yaml" << EOF
+            # ファイル名サフィックス: armyA=なし(後方互換), armyB=B, armyC=C
+            local file_suffix=""
+            case "$army" in
+                armyB) file_suffix="B" ;;
+                armyC) file_suffix="C" ;;
+            esac
+            cat > "$queue_dir/tasks/ashigaru${file_suffix}${i}.yaml" << EOF
 # 足軽${suffix}${i}専用タスクファイル
 task:
   task_id: null
@@ -308,7 +349,7 @@ task:
   status: idle
   timestamp: ""
 EOF
-            cat > "$queue_dir/reports/ashigaru${i}_report.yaml" << EOF
+            cat > "$queue_dir/reports/ashigaru${file_suffix}${i}_report.yaml" << EOF
 worker_id: ashigaru${suffix}${i}
 task_id: null
 timestamp: ""
@@ -321,14 +362,8 @@ EOF
     # taishogun_to_shogun.yaml リセット
     echo "queue: []" > "$BASE_DIR/queue/taishogun_to_shogun.yaml"
 
-    # shinobiキューリセット
-    if [ -d "queue/shinobi" ]; then
-        log_info "  shinobiキューをリセット..."
-        echo "queue: []" > queue/taishogun_to_shinobi.yaml 2>/dev/null || true
-        for tai in 1 2 3; do
-            echo -e "task:\n  task_id: null\n  status: idle\n  timestamp: \"\"\n  description: \"\"" > "queue/shinobi/tasks/shinobi${tai}.yaml" 2>/dev/null || true
-        done
-    fi
+    # tcmd_233 で忍衆→軍C統合済み。旧 queue/shinobi/ リセットは不要。
+    # 旧 taishogun_to_shinobi.yaml が残っていても空ファイルのまま放置する（歴史資産は queue/archive/shinobi_commands.yaml 参照）
 
     log_success "陣払い完了"
 }
@@ -363,12 +398,15 @@ init_army_queues() {
     fi
 
     # 足軽タスク・レポートファイル（存在しなければ作成）
+    local suffix="${army_id: -1}"  # A or B
+    local file_suffix=""
+    [[ "$army_id" == "armyB" ]] && file_suffix="B"
     for i in $(seq 1 8); do
-        if [ ! -f "$queue_dir/tasks/ashigaru${i}.yaml" ]; then
-            echo -e "task:\n  status: idle" > "$queue_dir/tasks/ashigaru${i}.yaml"
+        if [ ! -f "$queue_dir/tasks/ashigaru${file_suffix}${i}.yaml" ]; then
+            echo -e "task:\n  status: idle" > "$queue_dir/tasks/ashigaru${file_suffix}${i}.yaml"
         fi
-        if [ ! -f "$queue_dir/reports/ashigaru${i}_report.yaml" ]; then
-            echo "# No report yet" > "$queue_dir/reports/ashigaru${i}_report.yaml"
+        if [ ! -f "$queue_dir/reports/ashigaru${file_suffix}${i}_report.yaml" ]; then
+            echo "# No report yet" > "$queue_dir/reports/ashigaru${file_suffix}${i}_report.yaml"
         fi
     done
 
@@ -379,45 +417,10 @@ init_army_queues() {
 }
 
 # ============================================================
-# 6b. init_shinobi_queues() — 忍衆キューディレクトリ初期化
+# 6b. init_shinobi_queues() — 【削除済】
+# tcmd_233 (2026-04-22) で忍衆は軍Cに統合。init_army_queues "armyC" を使用せよ。
+# 歴史資産は queue/archive/shinobi_commands.yaml に温存。
 # ============================================================
-init_shinobi_queues() {
-    log_war "忍衆キューを初期化中..."
-    mkdir -p queue/shinobi/tasks queue/shinobi/reports queue/shinobi/archive
-
-    # 大将軍→忍頭 密命キュー
-    if [ ! -f "queue/taishogun_to_shinobi.yaml" ]; then
-        cat > queue/taishogun_to_shinobi.yaml << 'YAML_EOF'
-# ============================================================
-# taishogun_to_shinobi.yaml — 大将軍 → 忍頭 密命キュー
-# ============================================================
-queue: []
-YAML_EOF
-    fi
-
-    # 忍 任務書
-    for tai in 1 2 3; do
-        if [ ! -f "queue/shinobi/tasks/shinobi${tai}.yaml" ]; then
-            cat > "queue/shinobi/tasks/shinobi${tai}.yaml" << 'YAML_EOF'
-task:
-  task_id: null
-  status: idle
-  timestamp: ""
-  description: ""
-YAML_EOF
-        fi
-    done
-
-    # gitkeep
-    touch queue/shinobi/reports/.gitkeep 2>/dev/null || true
-
-    # アーカイブ
-    if [ ! -f "queue/shinobi/archive/commands.yaml" ]; then
-        echo "archive: []" > queue/shinobi/archive/commands.yaml
-    fi
-
-    log_success "  └─ 忍衆キュー初期化完了"
-}
 
 # ============================================================
 # 7. init_dashboards() — --clean時: ダッシュボード初期化
@@ -431,13 +434,13 @@ init_dashboards() {
     local TIMESTAMP
     TIMESTAMP=$(date "+%Y-%m-%d %H:%M")
 
-    for army_label in "軍A" "軍B"; do
+    for army_label in "軍A" "軍B" "軍C"; do
         local filename
-        if [ "$army_label" = "軍A" ]; then
-            filename="$BASE_DIR/dashboard_armyA.md"
-        else
-            filename="$BASE_DIR/dashboard_armyB.md"
-        fi
+        case "$army_label" in
+            "軍A") filename="$BASE_DIR/dashboard_armyA.md" ;;
+            "軍B") filename="$BASE_DIR/dashboard_armyB.md" ;;
+            "軍C") filename="$BASE_DIR/dashboard_armyC.md" ;;
+        esac
 
         if [ "$LANG_SETTING" = "ja" ]; then
             cat > "$filename" << EOF
@@ -496,32 +499,7 @@ EOF
         fi
     done
 
-    # 忍衆ダッシュボード
-    if [ ! -f "$BASE_DIR/dashboard_shinobi.md" ]; then
-        cat > "$BASE_DIR/dashboard_shinobi.md" << 'MD_EOF'
-# 忍衆 ダッシュボード
-
-> **更新者**: 忍頭（shinobicho）
-> **最終更新**: —
-
-## 🚨 要対応
-
-（なし）
-
-## 📋 現在任務
-
-| 担当 | 任務ID | 内容 | ステータス |
-|------|---------|------|----------|
-| 忍頭 | — | — | idle |
-| 忍1 | — | — | idle |
-| 忍2 | — | — | idle |
-| 忍3 | — | — | idle |
-
-## ✅ 完了任務
-
-（なし）
-MD_EOF
-    fi
+    # tcmd_233 で忍衆は軍Cに統合済み。dashboard_armyC.md は上記ループで初期化される。
 
     log_success "  └─ ダッシュボード初期化完了 (言語: $LANG_SETTING)"
 }
@@ -576,65 +554,40 @@ setup_taishogun() {
 }
 
 # ============================================================
-# 9b. setup_shinobi() — 忍衆セッション作成（4ペイン）
+# 9b. setup_shinobi() — 【削除済】
+# tcmd_233 (2026-04-22) で忍衆は軍Cに統合。setup_army "armyC" を使用せよ。
 # ============================================================
-setup_shinobi() {
-    log_war "忍衆の陣を構築中（忍頭+忍×3）..."
-    tmux new-session -d -s shinobi -x 200 -y 50
-    tmux rename-window -t "shinobi:0" "agents"
-
-    # 3回splitで合計4ペイン
-    for _ in $(seq 1 3); do
-        tmux split-window -t "shinobi:agents" || true
-        tmux select-layout -t "shinobi:agents" tiled
-    done
-    tmux select-layout -t "shinobi:agents" tiled
-
-    # 忍頭（pane 0）
-    tmux set-option -p -t "shinobi:agents.0" @agent_id "shinobicho"
-    tmux set-option -p -t "shinobi:agents.0" @army_id "shinobi"
-    tmux set-option -p -t "shinobi:agents.0" @army_session "shinobi"
-    tmux set-option -p -t "shinobi:agents.0" @model_name "Opus"
-    tmux select-pane -t "shinobi:agents.0" -T "shinobicho (Opus)"
-    local PROMPT_STR
-    PROMPT_STR=$(generate_prompt "忍頭" "cyan" "$SHELL_SETTING")
-    tmux send-keys -t "shinobi:agents.0" "cd \"$BASE_DIR\" && export PS1='${PROMPT_STR}' && clear" Enter
-
-    # 忍（pane 1-3）
-    for i in $(seq 1 3); do
-        local agent_id="shinobi${i}"
-        local model_name="Sonnet"
-        tmux set-option -p -t "shinobi:agents.${i}" @agent_id "$agent_id"
-        tmux set-option -p -t "shinobi:agents.${i}" @army_id "shinobi"
-        tmux set-option -p -t "shinobi:agents.${i}" @army_session "shinobi"
-        tmux set-option -p -t "shinobi:agents.${i}" @model_name "$model_name"
-        tmux select-pane -t "shinobi:agents.${i}" -T "${agent_id} (${model_name})"
-        PROMPT_STR=$(generate_prompt "忍${i}" "cyan" "$SHELL_SETTING")
-        tmux send-keys -t "shinobi:agents.${i}" "cd \"$BASE_DIR\" && export PS1='${PROMPT_STR}' && clear" Enter
-    done
-
-    tmux set-option -t shinobi -w pane-border-status top
-    tmux set-option -t shinobi -w pane-border-format '#{pane_index} #{@agent_id} (#{?#{==:#{@model_name},},unknown,#{@model_name}})'
-    log_success "  └─ shinobi の陣、構築完了"
-}
 
 # ============================================================
-# 10. setup_army(army_id) — 軍団セッション作成（10ペイン）
+# 10. setup_army(army_id) — 軍団セッション作成
+# SubAgent方式（デフォルト）: 2ペイン（将軍+家老のみ）
+# --legacy-ashigaru: 10ペイン（将軍+家老+足軽×8）
 # ============================================================
 setup_army() {
     local army_id=$1
     local suffix="${army_id: -1}"  # A or B
 
-    log_war "${army_id} の陣を構築中（将軍+家老+足軽×8）..."
+    if [ "$LEGACY_ASHIGARU" = true ]; then
+        local pane_count=10
+        log_war "${army_id} の陣を構築中（将軍+家老+足軽×8、レガシー方式）..."
+    else
+        local pane_count=2
+        log_war "${army_id} の陣を構築中（将軍+家老のみ、SubAgent方式）..."
+    fi
 
     tmux new-session -d -s "$army_id" -x 200 -y 50
     tmux rename-window -t "${army_id}:0" "agents"
 
-    # 9回split で合計10ペイン
-    for _ in $(seq 1 9); do
+    if [ "$LEGACY_ASHIGARU" = true ]; then
+        # レガシー: 9回split で合計10ペイン
+        for _ in $(seq 1 9); do
+            tmux split-window -t "${army_id}:agents" || true
+            tmux select-layout -t "${army_id}:agents" tiled
+        done
+    else
+        # SubAgent方式: 1回splitで合計2ペイン（将軍+家老）
         tmux split-window -t "${army_id}:agents" || true
-        tmux select-layout -t "${army_id}:agents" tiled
-    done
+    fi
     tmux select-layout -t "${army_id}:agents" tiled
 
     # --- 将軍（pane 0）---
@@ -656,35 +609,117 @@ setup_army() {
     PROMPT_STR=$(generate_prompt "家老${suffix}" "red" "$SHELL_SETTING")
     tmux send-keys -t "${army_id}:agents.1" "cd \"$BASE_DIR\" && export PS1='${PROMPT_STR}' && clear" Enter
 
-    # --- 足軽（pane 2-9）---
-    for i in $(seq 1 8); do
-        local pane_idx=$((i + 1))
-        local agent_id="ashigaru${suffix}${i}"
-        local model_name
+    # --- 足軽（pane 2-9）--- レガシー方式のみ
+    if [ "$LEGACY_ASHIGARU" = true ]; then
+        for i in $(seq 1 8); do
+            local pane_idx=$((i + 1))
+            local agent_id="ashigaru${suffix}${i}"
+            local model_name
 
-        if [ "$KESSEN_MODE" = true ]; then
-            model_name="Opus Thinking"
-        elif [ $i -le 4 ]; then
-            model_name="Sonnet Thinking"
-        else
-            model_name="Opus Thinking"
-        fi
+            if [ $i -eq 1 ]; then
+                model_name="Sonnet"
+            else
+                model_name="Opus"
+            fi
 
-        tmux set-option -p -t "${army_id}:agents.${pane_idx}" @agent_id "$agent_id"
-        tmux set-option -p -t "${army_id}:agents.${pane_idx}" @army_id "$army_id"
-        tmux set-option -p -t "${army_id}:agents.${pane_idx}" @army_session "$army_id"
-        tmux set-option -p -t "${army_id}:agents.${pane_idx}" @model_name "$model_name"
-        tmux select-pane -t "${army_id}:agents.${pane_idx}" -T "${agent_id} (${model_name})"
+            tmux set-option -p -t "${army_id}:agents.${pane_idx}" @agent_id "$agent_id"
+            tmux set-option -p -t "${army_id}:agents.${pane_idx}" @army_id "$army_id"
+            tmux set-option -p -t "${army_id}:agents.${pane_idx}" @army_session "$army_id"
+            tmux set-option -p -t "${army_id}:agents.${pane_idx}" @model_name "$model_name"
+            tmux select-pane -t "${army_id}:agents.${pane_idx}" -T "${agent_id} (${model_name})"
 
-        PROMPT_STR=$(generate_prompt "足軽${suffix}${i}" "blue" "$SHELL_SETTING")
-        tmux send-keys -t "${army_id}:agents.${pane_idx}" "cd \"$BASE_DIR\" && export PS1='${PROMPT_STR}' && clear" Enter
-    done
+            PROMPT_STR=$(generate_prompt "足軽${suffix}${i}" "blue" "$SHELL_SETTING")
+            tmux send-keys -t "${army_id}:agents.${pane_idx}" "cd \"$BASE_DIR\" && export PS1='${PROMPT_STR}' && clear" Enter
+        done
+    fi
 
     # pane-border-format でモデル名を常時表示
     tmux set-option -t "$army_id" -w pane-border-status top
     tmux set-option -t "$army_id" -w pane-border-format '#{pane_index} #{@agent_id} (#{?#{==:#{@model_name},},unknown,#{@model_name}})'
 
-    log_success "  └─ ${army_id} の陣、構築完了"
+    log_success "  └─ ${army_id} の陣、構築完了（${pane_count}ペイン）"
+}
+
+# ============================================================
+# 10b. setup_army_minimal(army_id) — 最小構成セッション作成
+# SubAgent方式（デフォルト）: 2ペイン（将軍+家老のみ）
+# --legacy-ashigaru: 6ペイン（将軍+家老+足軽1-4）
+# ============================================================
+setup_army_minimal() {
+    local army_id=$1
+    local suffix="${army_id: -1}"  # A or B
+
+    if [ "$LEGACY_ASHIGARU" = true ]; then
+        local pane_count=6
+        log_war "${army_id} の陣を最小構成で構築中（将軍+家老+足軽×4、レガシー方式）..."
+    else
+        local pane_count=2
+        log_war "${army_id} の陣を最小構成で構築中（将軍+家老のみ、SubAgent方式）..."
+    fi
+
+    tmux new-session -d -s "$army_id" -x 200 -y 50
+    tmux rename-window -t "${army_id}:0" "agents"
+
+    if [ "$LEGACY_ASHIGARU" = true ]; then
+        # レガシー: 5回split で合計6ペイン
+        for _ in $(seq 1 5); do
+            tmux split-window -t "${army_id}:agents" || true
+            tmux select-layout -t "${army_id}:agents" tiled
+        done
+    else
+        # SubAgent方式: 1回splitで合計2ペイン
+        tmux split-window -t "${army_id}:agents" || true
+    fi
+    tmux select-layout -t "${army_id}:agents" tiled
+
+    # --- 将軍（pane 0）---
+    tmux set-option -p -t "${army_id}:agents.0" @agent_id "shogun${suffix}"
+    tmux set-option -p -t "${army_id}:agents.0" @army_id "$army_id"
+    tmux set-option -p -t "${army_id}:agents.0" @army_session "$army_id"
+    tmux set-option -p -t "${army_id}:agents.0" @model_name "Opus"
+    tmux select-pane -t "${army_id}:agents.0" -T "shogun${suffix} (Opus)"
+    local PROMPT_STR
+    PROMPT_STR=$(generate_prompt "将軍${suffix}" "magenta" "$SHELL_SETTING")
+    tmux send-keys -t "${army_id}:agents.0" "cd \"$BASE_DIR\" && export PS1='${PROMPT_STR}' && clear" Enter
+
+    # --- 家老（pane 1）---
+    tmux set-option -p -t "${army_id}:agents.1" @agent_id "karo${suffix}"
+    tmux set-option -p -t "${army_id}:agents.1" @army_id "$army_id"
+    tmux set-option -p -t "${army_id}:agents.1" @army_session "$army_id"
+    tmux set-option -p -t "${army_id}:agents.1" @model_name "Opus"
+    tmux select-pane -t "${army_id}:agents.1" -T "karo${suffix} (Opus)"
+    PROMPT_STR=$(generate_prompt "家老${suffix}" "red" "$SHELL_SETTING")
+    tmux send-keys -t "${army_id}:agents.1" "cd \"$BASE_DIR\" && export PS1='${PROMPT_STR}' && clear" Enter
+
+    # --- 足軽（pane 2-5 → 足軽1-4のみ）--- レガシー方式のみ
+    if [ "$LEGACY_ASHIGARU" = true ]; then
+        for i in $(seq 1 4); do
+            local pane_idx=$((i + 1))
+            local agent_id="ashigaru${suffix}${i}"
+            local model_name
+
+            if [ $i -eq 1 ]; then
+                model_name="Sonnet"
+            else
+                model_name="Opus"
+            fi
+
+            tmux set-option -p -t "${army_id}:agents.${pane_idx}" @agent_id "$agent_id"
+            tmux set-option -p -t "${army_id}:agents.${pane_idx}" @army_id "$army_id"
+            tmux set-option -p -t "${army_id}:agents.${pane_idx}" @army_session "$army_id"
+            tmux set-option -p -t "${army_id}:agents.${pane_idx}" @model_name "$model_name"
+            tmux select-pane -t "${army_id}:agents.${pane_idx}" -T "${agent_id} (${model_name})"
+
+            PROMPT_STR=$(generate_prompt "足軽${suffix}${i}" "blue" "$SHELL_SETTING")
+            tmux send-keys -t "${army_id}:agents.${pane_idx}" "cd \"$BASE_DIR\" && export PS1='${PROMPT_STR}' && clear" Enter
+        done
+    fi
+
+    # pane-border-format でモデル名を常時表示
+    tmux set-option -t "$army_id" -w pane-border-status top
+    tmux set-option -t "$army_id" -w pane-border-format '#{pane_index} #{@agent_id} (#{?#{==:#{@model_name},},unknown,#{@model_name}})'
+
+    log_success "  └─ ${army_id} の陣、最小構成で構築完了（${pane_count}ペイン）"
 }
 
 # ============================================================
@@ -708,6 +743,9 @@ wait_for_claude() {
 # ============================================================
 launch_claude_taishogun() {
     log_war "大将軍に Claude Code を召喚中..."
+
+    # シェル初期化(PS1設定等)の完了を待つ
+    sleep 1
 
     tmux send-keys -t taishogun:main.0 \
         "MAX_THINKING_TOKENS=0 $CLAUDE_CMD --model $MODEL_TAISHOGUN --dangerously-skip-permissions" \
@@ -738,52 +776,78 @@ launch_claude_army() {
     sleep 1
     log_info "  └─ ${army_id} 家老、召喚完了"
 
-    # 足軽（1-8）
-    for i in $(seq 1 8); do
-        local pane_idx=$((i + 1))
-        local model
+    # 足軽（1-8）— レガシー方式のみ
+    if [ "$LEGACY_ASHIGARU" = true ]; then
+        for i in $(seq 1 8); do
+            local pane_idx=$((i + 1))
+            local model
 
-        if [ "$KESSEN_MODE" = true ]; then
-            model=$MODEL_ASHIGARU_OPUS
-        elif [ $i -le 4 ]; then
-            model=$MODEL_ASHIGARU_SONNET
-        else
-            model=$MODEL_ASHIGARU_OPUS
-        fi
+            if [ $i -eq 1 ]; then
+                model=$MODEL_ASHIGARU_SONNET
+            else
+                model=$MODEL_ASHIGARU_OPUS
+            fi
 
-        tmux send-keys -t "${army_id}:agents.${pane_idx}" \
-            "$CLAUDE_CMD --model $model --dangerously-skip-permissions" \
-            Enter
-        sleep 1
-    done
-
-    if [ "$KESSEN_MODE" = true ]; then
-        log_info "  └─ ${army_id} 足軽1-8（Opus Thinking）、決戦の陣で召喚完了"
+            tmux send-keys -t "${army_id}:agents.${pane_idx}" \
+                "$CLAUDE_CMD --model $model --dangerously-skip-permissions" \
+                Enter
+            sleep 1
+        done
+        log_info "  └─ ${army_id} 足軽1（Sonnet）、足軽2-8（Opus）、召喚完了（レガシー方式）"
     else
-        log_info "  └─ ${army_id} 足軽1-4（Sonnet）、足軽5-8（Opus）、召喚完了"
+        log_info "  └─ ${army_id} 足軽はSubAgent方式（家老がAgent toolで起動）"
     fi
 }
 
 # ============================================================
-# 13b. launch_claude_shinobi() — 忍衆にClaude Code起動
+# 13a. launch_claude_army_minimal(army_id) — 最小構成軍にClaude Code起動
 # ============================================================
-launch_claude_shinobi() {
-    log_war "忍衆に Claude Code を召喚中..."
-    # 忍頭（Opus）
-    tmux send-keys -t "shinobi:agents.0" \
-        "MAX_THINKING_TOKENS=0 $CLAUDE_CMD --model $MODEL_SHINOBICHO --dangerously-skip-permissions" \
+launch_claude_army_minimal() {
+    local army_id=$1
+
+    log_war "${army_id} に Claude Code を最小構成で召喚中..."
+
+    # 将軍（Opus, thinking無効）
+    tmux send-keys -t "${army_id}:agents.0" \
+        "MAX_THINKING_TOKENS=0 $CLAUDE_CMD --model $MODEL_SHOGUN --dangerously-skip-permissions" \
         Enter
     sleep 1
-    log_info "  └─ 忍頭、召喚完了"
-    # 忍（1-3）
-    for i in $(seq 1 3); do
-        tmux send-keys -t "shinobi:agents.${i}" \
-            "$CLAUDE_CMD --model $MODEL_SHINOBI --dangerously-skip-permissions" \
-            Enter
-        sleep 1
-    done
-    log_info "  └─ 忍1-3、召喚完了"
+    log_info "  └─ ${army_id} 将軍、召喚完了"
+
+    # 家老（Opus）
+    tmux send-keys -t "${army_id}:agents.1" \
+        "$CLAUDE_CMD --model $MODEL_KARO --dangerously-skip-permissions" \
+        Enter
+    sleep 1
+    log_info "  └─ ${army_id} 家老、召喚完了"
+
+    # 足軽（1-4のみ）— レガシー方式のみ
+    if [ "$LEGACY_ASHIGARU" = true ]; then
+        for i in $(seq 1 4); do
+            local pane_idx=$((i + 1))
+            local model
+
+            if [ $i -eq 1 ]; then
+                model=$MODEL_ASHIGARU_SONNET
+            else
+                model=$MODEL_ASHIGARU_OPUS
+            fi
+
+            tmux send-keys -t "${army_id}:agents.${pane_idx}" \
+                "$CLAUDE_CMD --model $model --dangerously-skip-permissions" \
+                Enter
+            sleep 1
+        done
+        log_info "  └─ ${army_id} 足軽1（Sonnet）、足軽2-4（Opus）、召喚完了（レガシー方式）"
+    else
+        log_info "  └─ ${army_id} 足軽はSubAgent方式（家老がAgent toolで起動）"
+    fi
 }
+
+# ============================================================
+# 13b. launch_claude_shinobi() — 【削除済】
+# tcmd_233 (2026-04-22) で忍衆は軍Cに統合。launch_claude_army "armyC" を使用せよ。
+# ============================================================
 
 # ============================================================
 # 14. send_initial_instructions() — 全エージェントに指示書送信
@@ -807,8 +871,20 @@ send_initial_instructions() {
     log_info "  └─ 大将軍に指示書伝達完了"
     sleep 2
 
+    # 起動対象の軍リストを決定
+    local armies=()
+    local ashigaru_max=8
+    case "$ARMY_MODE" in
+        armyA)   armies=(armyA) ;;
+        armyB)   armies=(armyB) ;;
+        armyC)   armies=(armyC) ;;
+        both)    armies=(armyA armyB) ;;
+        minimal) armies=(armyA); ashigaru_max=4 ;;
+        *)       armies=(armyA armyB armyC) ;;  # all
+    esac
+
     # 各軍に指示
-    for army_id in armyA armyB; do
+    for army_id in "${armies[@]}"; do
         # 将軍
         tmux send-keys -t "${army_id}:agents.0" 'instructions/shogun.md を読んでセッションを開始せよ。'
         sleep 0.5
@@ -821,33 +897,84 @@ send_initial_instructions() {
         tmux send-keys -t "${army_id}:agents.1" Enter
         sleep 2
 
-        # 足軽
-        for i in $(seq 1 8); do
-            local pane_idx=$((i + 1))
-            tmux send-keys -t "${army_id}:agents.${pane_idx}" "instructions/ashigaru.md を読んでセッションを開始せよ。"
-            sleep 0.3
-            tmux send-keys -t "${army_id}:agents.${pane_idx}" Enter
-            sleep 0.5
-        done
+        # 足軽 — レガシー方式のみ
+        if [ "$LEGACY_ASHIGARU" = true ]; then
+            for i in $(seq 1 $ashigaru_max); do
+                local pane_idx=$((i + 1))
+                tmux send-keys -t "${army_id}:agents.${pane_idx}" "instructions/ashigaru.md を読んでセッションを開始せよ。"
+                sleep 0.3
+                tmux send-keys -t "${army_id}:agents.${pane_idx}" Enter
+                sleep 0.5
+            done
+        fi
 
         log_info "  └─ ${army_id} 全エージェントに指示書伝達完了"
     done
 
-    # --- 忍衆 ---
-    log_info "忍衆に初期指示を送信中..."
-    tmux send-keys -t "shinobi:agents.0" 'instructions/sets/shinobi/shinobicho.md を読んでセッションを開始せよ。'
-    sleep 0.5
-    tmux send-keys -t "shinobi:agents.0" Enter
-    sleep 2
-    for i in $(seq 1 3); do
-        tmux send-keys -t "shinobi:agents.${i}" "instructions/sets/shinobi/shinobi.md を読んでセッションを開始せよ。"
-        sleep 0.3
-        tmux send-keys -t "shinobi:agents.${i}" Enter
-        sleep 0.5
-    done
-    log_success "  └─ 忍衆初期指示送信完了"
+    # tcmd_233 で忍衆は軍Cに統合済み。軍Cは上記ループで armies 配列経由で処理される。
 
     log_success "全軍に指示書伝達完了"
+}
+
+# ============================================================
+# 14b. launch_shogun_web() — shogun-web + ngrok 起動
+# ============================================================
+launch_shogun_web() {
+    local SHOGUN_WEB_DIR="/home/hatan/shogun-web"
+    local SHOGUN_WEB_PORT=3000
+
+    if [ ! -d "$SHOGUN_WEB_DIR" ]; then
+        log_info "⚠️  shogun-web ディレクトリが見つかりません。スキップ"
+        return
+    fi
+
+    # 既に起動中ならスキップ
+    if curl -s "http://localhost:${SHOGUN_WEB_PORT}/api/health" > /dev/null 2>&1; then
+        log_info "  └─ shogun-web は既に起動中（port ${SHOGUN_WEB_PORT}）。スキップ"
+    else
+        log_war "shogun-web を起動中（port ${SHOGUN_WEB_PORT}）..."
+        cd "$SHOGUN_WEB_DIR"
+        nohup node server.js > /tmp/shogun-web.log 2>&1 &
+        cd "$BASE_DIR"
+
+        # 起動待ち（最大10秒）
+        for i in $(seq 1 10); do
+            if curl -s "http://localhost:${SHOGUN_WEB_PORT}/api/health" > /dev/null 2>&1; then
+                log_success "  └─ shogun-web 起動完了"
+                break
+            fi
+            sleep 1
+        done
+    fi
+
+    # ngrok 起動
+    if ! command -v ngrok &> /dev/null; then
+        log_info "⚠️  ngrok が見つかりません。ローカルのみで起動"
+        return
+    fi
+
+    # 既に ngrok が起動中ならスキップ
+    if curl -s "http://localhost:4040/api/tunnels" > /dev/null 2>&1; then
+        local existing_url
+        existing_url=$(curl -s "http://localhost:4040/api/tunnels" | python3 -c "import sys,json; data=json.load(sys.stdin); tunnels=[t for t in data['tunnels'] if 'https' in t['public_url']]; print(tunnels[0]['public_url'] if tunnels else '')" 2>/dev/null || echo "")
+        if [ -n "$existing_url" ]; then
+            log_info "  └─ ngrok は既に起動中: $existing_url"
+            return
+        fi
+    fi
+
+    log_war "ngrok を起動中..."
+    nohup ngrok http "$SHOGUN_WEB_PORT" --log=stdout > /tmp/ngrok_shogun.log 2>&1 &
+    sleep 3
+
+    local ngrok_url
+    ngrok_url=$(curl -s "http://localhost:4040/api/tunnels" | python3 -c "import sys,json; data=json.load(sys.stdin); tunnels=[t for t in data['tunnels'] if 'https' in t['public_url']]; print(tunnels[0]['public_url'] if tunnels else '')" 2>/dev/null || echo "")
+
+    if [ -n "$ngrok_url" ]; then
+        log_success "  └─ ngrok 起動完了: $ngrok_url"
+    else
+        log_info "  └─ ngrok URL取得失敗。ログ: /tmp/ngrok_shogun.log"
+    fi
 }
 
 # ============================================================
@@ -861,7 +988,7 @@ show_formation() {
     tmux list-sessions 2>/dev/null | sed 's/^/     /'
     echo ""
     echo "  ┌──────────────────────────────────────────────────────────┐"
-    echo "  │  📋 布陣図 (Formation) — 大将軍+2軍団制                  │"
+    echo "  │  📋 布陣図 (Formation) — 大将軍+3軍団制                  │"
     echo "  └──────────────────────────────────────────────────────────┘"
     echo ""
     echo "     【taishogunセッション】大将軍の本陣"
@@ -869,20 +996,33 @@ show_formation() {
     echo "     │  Pane 0: 大将軍 (TAISHOGUN) │  ← 全軍統括"
     echo "     └─────────────────────────────┘"
     echo ""
-    echo "     【armyAセッション】軍A（10ペイン）"
-    echo "     ┌──────────┬──────────┬──────────┬──────────┬──────────┐"
-    echo "     │ 将軍A(0) │ 家老A(1) │ 足軽A1(2)│ 足軽A2(3)│ 足軽A3(4)│"
-    echo "     ├──────────┼──────────┼──────────┼──────────┼──────────┤"
-    echo "     │ 足軽A4(5)│ 足軽A5(6)│ 足軽A6(7)│ 足軽A7(8)│ 足軽A8(9)│"
-    echo "     └──────────┴──────────┴──────────┴──────────┴──────────┘"
-    echo ""
-    echo "     【armyBセッション】軍B（10ペイン）"
-    echo "     ┌──────────┬──────────┬──────────┬──────────┬──────────┐"
-    echo "     │ 将軍B(0) │ 家老B(1) │ 足軽B1(2)│ 足軽B2(3)│ 足軽B3(4)│"
-    echo "     ├──────────┼──────────┼──────────┼──────────┼──────────┤"
-    echo "     │ 足軽B4(5)│ 足軽B5(6)│ 足軽B6(7)│ 足軽B7(8)│ 足軽B8(9)│"
-    echo "     └──────────┴──────────┴──────────┴──────────┴──────────┘"
-    echo ""
+    # 起動対象の軍リストを決定 (main 側の ARMY_MODE と対応)
+    local formation_armies=()
+    case "$ARMY_MODE" in
+        armyA)   formation_armies=(A) ;;
+        armyB)   formation_armies=(B) ;;
+        armyC)   formation_armies=(C) ;;
+        both)    formation_armies=(A B) ;;
+        minimal) formation_armies=(A) ;;
+        *)       formation_armies=(A B C) ;;  # all
+    esac
+
+    for suffix in "${formation_armies[@]}"; do
+        if [ "$LEGACY_ASHIGARU" = true ]; then
+            echo "     【army${suffix}セッション】軍${suffix}（10ペイン、レガシー方式）"
+            echo "     ┌──────────┬──────────┬──────────┬──────────┬──────────┐"
+            echo "     │ 将軍${suffix}(0) │ 家老${suffix}(1) │ 足軽${suffix}1(2)│ 足軽${suffix}2(3)│ 足軽${suffix}3(4)│"
+            echo "     ├──────────┼──────────┼──────────┼──────────┼──────────┤"
+            echo "     │ 足軽${suffix}4(5)│ 足軽${suffix}5(6)│ 足軽${suffix}6(7)│ 足軽${suffix}7(8)│ 足軽${suffix}8(9)│"
+            echo "     └──────────┴──────────┴──────────┴──────────┴──────────┘"
+        else
+            echo "     【army${suffix}セッション】軍${suffix}（2ペイン、SubAgent方式）"
+            echo "     ┌──────────┬──────────┐"
+            echo "     │ 将軍${suffix}(0) │ 家老${suffix}(1) │  足軽はSubAgent（家老が起動）"
+            echo "     └──────────┴──────────┘"
+        fi
+        echo ""
+    done
 }
 
 # ============================================================
@@ -903,7 +1043,14 @@ show_completion() {
         echo "    tmux display-message -t armyA:agents.0 -p '#{@agent_id}'       # → shogunA"
         echo "    tmux display-message -t armyA:agents.1 -p '#{@agent_id}'       # → karoA"
         echo "    tmux display-message -t armyB:agents.0 -p '#{@agent_id}'       # → shogunB"
+        echo "    tmux display-message -t armyC:agents.0 -p '#{@agent_id}'       # → shogunC"
         echo ""
+    fi
+
+    # ngrok URL を取得して表示
+    local ngrok_display=""
+    if curl -s "http://localhost:4040/api/tunnels" > /dev/null 2>&1; then
+        ngrok_display=$(curl -s "http://localhost:4040/api/tunnels" | python3 -c "import sys,json; data=json.load(sys.stdin); tunnels=[t for t in data['tunnels'] if 'https' in t['public_url']]; print(tunnels[0]['public_url'] if tunnels else '')" 2>/dev/null || echo "")
     fi
 
     echo "  次のステップ:"
@@ -916,7 +1063,15 @@ show_completion() {
     echo "  │                                                          │"
     echo "  │  軍Bの陣を確認:                                          │"
     echo "  │     tmux attach-session -t armyB        (または: csb)    │"
+    echo "  │                                                          │"
+    echo "  │  軍Cの陣を確認:                                          │"
+    echo "  │     tmux attach-session -t armyC        (または: csc)    │"
     echo "  └──────────────────────────────────────────────────────────┘"
+    if [ -n "$ngrok_display" ]; then
+        echo ""
+        echo "  🌐 Shogun Web Dashboard: $ngrok_display"
+        echo "     (ローカル: http://localhost:3000)"
+    fi
     echo ""
     echo "  ════════════════════════════════════════════════════════════"
     echo "   天下布武！勝利を掴め！ (Tenka Fubu! Seize victory!)"
@@ -945,9 +1100,10 @@ alias csst="cd $BASE_DIR && ./scripts/shutsujin_departure.sh"
 alias cst="tmux attach-session -t taishogun"
 alias csa="tmux attach-session -t armyA"
 alias csb="tmux attach-session -t armyB"
+alias csc="tmux attach-session -t armyC"
 EOF
 
-    log_success "  └─ エイリアス登録完了（csst, cst, csa, csb）"
+    log_success "  └─ エイリアス登録完了（csst, cst, csa, csb, csc）"
 }
 
 # ============================================================
@@ -964,8 +1120,9 @@ open_terminal_tabs() {
         wt.exe -w 0 \
             new-tab wsl.exe -e bash -c "tmux attach-session -t taishogun" \; \
             new-tab wsl.exe -e bash -c "tmux attach-session -t armyA" \; \
-            new-tab wsl.exe -e bash -c "tmux attach-session -t armyB"
-        log_success "  └─ ターミナルタブ展開完了（taishogun, armyA, armyB）"
+            new-tab wsl.exe -e bash -c "tmux attach-session -t armyB" \; \
+            new-tab wsl.exe -e bash -c "tmux attach-session -t armyC"
+        log_success "  └─ ターミナルタブ展開完了（taishogun, armyA, armyB, armyC）"
     else
         log_info "  └─ wt.exe が見つかりません。手動でアタッチしてください。"
     fi
@@ -1009,9 +1166,29 @@ main() {
     backup_and_clean
 
     # 7. キューディレクトリ初期化（通常時: 未存在時のみ作成）
-    init_army_queues "armyA"
-    init_army_queues "armyB"
-    init_shinobi_queues
+    case "$ARMY_MODE" in
+        armyA)
+            init_army_queues "armyA"
+            ;;
+        armyB)
+            init_army_queues "armyB"
+            ;;
+        armyC)
+            init_army_queues "armyC"
+            ;;
+        both)
+            init_army_queues "armyA"
+            init_army_queues "armyB"
+            ;;
+        minimal)
+            init_army_queues "armyA"
+            ;;
+        *)  # all
+            init_army_queues "armyA"
+            init_army_queues "armyB"
+            init_army_queues "armyC"
+            ;;
+    esac
 
     # 8. ダッシュボード初期化（--clean時のみ）
     init_dashboards
@@ -1020,16 +1197,44 @@ main() {
 
     # 9. セッション作成
     setup_taishogun
-    setup_shinobi
-    setup_army "armyA"
-    setup_army "armyB"
-
-    echo ""
-    log_success "セッション作成完了: taishogun(1) + shinobi(4) + armyA(10) + armyB(10) = 25ペイン"
+    local army_panes=$( [ "$LEGACY_ASHIGARU" = true ] && echo 10 || echo 2 )
+    case "$ARMY_MODE" in
+        armyA)
+            setup_army "armyA"
+            log_success "セッション作成完了: taishogun(1) + armyA(${army_panes}) = $((1 + army_panes))ペイン [--army armyA]"
+            ;;
+        armyB)
+            setup_army "armyB"
+            log_success "セッション作成完了: taishogun(1) + armyB(${army_panes}) = $((1 + army_panes))ペイン [--army armyB]"
+            ;;
+        armyC)
+            setup_army "armyC"
+            log_success "セッション作成完了: taishogun(1) + armyC(${army_panes}) = $((1 + army_panes))ペイン [--army armyC]"
+            ;;
+        both)
+            setup_army "armyA"
+            setup_army "armyB"
+            log_success "セッション作成完了: taishogun(1) + armyA(${army_panes}) + armyB(${army_panes}) = $((1 + army_panes * 2))ペイン [--army both, 旧互換]"
+            ;;
+        minimal)
+            setup_army_minimal "armyA"
+            local minimal_panes=$( [ "$LEGACY_ASHIGARU" = true ] && echo 6 || echo 2 )
+            log_success "セッション作成完了: taishogun(1) + armyA(${minimal_panes}) = $((1 + minimal_panes))ペイン [--army minimal]"
+            ;;
+        *)  # all
+            setup_army "armyA"
+            setup_army "armyB"
+            setup_army "armyC"
+            log_success "セッション作成完了: taishogun(1) + armyA(${army_panes}) + armyB(${army_panes}) + armyC(${army_panes}) = $((1 + army_panes * 3))ペイン"
+            ;;
+    esac
     echo ""
 
     # 10. エイリアス登録
     register_aliases
+
+    # 10b. shogun-web + ngrok 起動
+    launch_shogun_web
 
     # 11. Claude Code 起動（-s時はスキップ）
     if [ "$SETUP_ONLY" = false ]; then
@@ -1041,16 +1246,32 @@ main() {
         fi
 
         launch_claude_taishogun
-        launch_claude_shinobi
-        launch_claude_army "armyA"
-        launch_claude_army "armyB"
+        case "$ARMY_MODE" in
+            armyA)
+                launch_claude_army "armyA"
+                ;;
+            armyB)
+                launch_claude_army "armyB"
+                ;;
+            armyC)
+                launch_claude_army "armyC"
+                ;;
+            both)
+                launch_claude_army "armyA"
+                launch_claude_army "armyB"
+                ;;
+            minimal)
+                launch_claude_army_minimal "armyA"
+                ;;
+            *)  # all
+                launch_claude_army "armyA"
+                launch_claude_army "armyB"
+                launch_claude_army "armyC"
+                ;;
+        esac
 
         echo ""
-        if [ "$KESSEN_MODE" = true ]; then
-            log_success "決戦の陣で出陣！全軍Opus！"
-        else
-            log_success "平時の陣で出陣！"
-        fi
+        log_success "出陣！足軽1=Sonnet, 足軽2-8=Opus！ [--army ${ARMY_MODE}]"
         echo ""
 
         # 12. 初期指示送信

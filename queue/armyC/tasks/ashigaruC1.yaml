@@ -1,0 +1,65 @@
+# 半蔵 任務書
+task:
+  task_id: scmd_001_hanzo_dungeon_hide
+  parent_cmd: scmd_001
+  project: camp_schedule_app
+  description: |
+    【camp-schedule-app 依頼1: dungeon リンク/ボタンを完全非表示】
+
+    ■ プロジェクト
+    - パス: /home/hatan/camp-schedule-app/
+    - 本番: https://camp-schedule-app.vercel.app/
+    - 技術: Vanilla JS / Firebase Firestore / 単一HTML+外部JS
+
+    ■ 背景
+    - 軍A が tcmd_115 で dungeon/ の P1 実装に着手したばかりで「かなり未完成」
+    - 殿より「dungeon への動線を完全に遮断せよ」との指示
+    - ただし dungeon/ 配下のファイルは残し、軍Aの開発を阻害しないこと
+    - 直接 URL (/dungeon/) でのアクセスは引き続き可能にする
+
+    ■ 現状
+    - ルート /home/hatan/camp-schedule-app/index.html L52 付近:
+      `<button class="dungeon-button hidden" ... onclick="toDungeonPage()">`
+      → 初期は hidden だが、隠しボタン revealBattleBtn 押下で解禁される仕様
+    - /home/hatan/camp-schedule-app/assets/js/main.js L319-330 付近:
+      revealBattleBtn クリックで battle/dungeon 両方が解禁される
+
+    ■ 実装
+    1. ルート index.html の `<button class="dungeon-button hidden" ...>` を
+       コメントアウト or 削除（DOMから消す）。HTML コメント推奨:
+       `<!-- dungeon-button hidden until P1 release (軍A tcmd_115 実装中) -->`
+    2. assets/js/main.js の dungeon-button 解禁ロジックを削除。
+       revealBattleBtn は battle-button のみ解禁するように残せ。
+       具体的には `dungeon-button` class を触っている classList.remove('hidden') 等の行のみ除去。
+    3. CSS は触らなくてよい（dungeon-button のスタイルが残っても害なし）
+    4. 依頼3 の担当（小太郎）も battle/assets/js/main.js を触る可能性があるが、
+       半蔵は **ルートの main.js のみ** 触る。battle/ 配下は触禁。
+
+    ■ 触ってOK
+    - /home/hatan/camp-schedule-app/index.html
+    - /home/hatan/camp-schedule-app/assets/js/main.js
+
+    ■ 触禁
+    - /home/hatan/camp-schedule-app/dungeon/ 配下（軍A が実装中、絶対に触るな）
+    - /home/hatan/camp-schedule-app/battle/ 配下（依頼2, 3担当の管轄）
+    - /home/hatan/camp-schedule-app/assets/js/shared/（読取のみ）
+    - git commit は **するな**（忍頭が最後に3依頼まとめて PR を切る）
+
+    ■ 完了条件
+    - [ ] トップページに dungeon への動線が一切存在しない（隠しボタン押下でも出ない）
+    - [ ] battle への動線は従来どおり機能
+    - [ ] 直接 URL /dungeon/ は引き続きアクセス可能
+    - [ ] 変更ファイルの差分概要を報告に記載
+
+    ■ 検証
+    - Playwright MCP で https://camp-schedule-app.vercel.app/ を開き、
+      dungeon への動線がないことを目視確認（スクショ推奨）。
+      ただし本番は未デプロイ状態なので、**ローカル変更後の HTML/JS の静的検証** でもOK。
+    - 隠しボタン revealBattleBtn を手動クリックしても dungeon-button が出ないことを
+      コード上で論証せよ（grep で dungeon-button への参照を確認）。
+
+    ■ 出力
+    - queue/shinobi/reports/hanzo_report.yaml に報告を書け
+    - files_modified に実ファイル絶対パスを列挙せよ
+  status: done
+  timestamp: "2026-04-16T00:32:22"
