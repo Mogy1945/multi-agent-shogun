@@ -1,4 +1,49 @@
 entries:
+  - id: KZ-155
+    title: "post-merge verification checklist (merge_sha検証・実ファイル差分確認)"
+    type: process
+    status: open
+    reporter: shogunB
+    summary: "報告された merge_sha を盲信せず、main の実ファイルで差分・存在確認まで完遂する checklist を運用に組込む"
+    detail: "cmd_B029 で fork Mogy1945 内部 SHA 3067b5c4 を main にマージしたと報告されたが、tono local main には不在だった。原因は merge_sha の盲信。対策として: (1) merge 後に必ず git cat-file -e <sha> で存在確認 (2) git log main --oneline | grep <sha> で main 系列に乗ったか確認 (3) 影響ファイルを 1件 cat/grep して実反映確認"
+    created: "2026-04-22"
+
+  - id: KZ-156
+    title: "main naming convention (fork/local/upstream の main 命名明確化)"
+    type: documentation
+    status: open
+    reporter: shogunB
+    summary: "『main』という語が fork main / local main / upstream main のどれを指すか曖昧。dashboard/YAML で必ず prefix を付ける"
+    detail: "tcmd_233→cmd_B029 乖離の真因 RC1 は『fork の main に push したが upstream main と別物』の理解不足。今後は『upstream/main (yohey-w)』『fork/main (Mogy1945)』『local main (tono)』と明示表記する"
+    created: "2026-04-22"
+
+  - id: KZ-157
+    title: "sync_fork_to_local.sh (自動同期スクリプト雛形)"
+    type: tooling
+    status: open
+    reporter: shogunB
+    summary: "fork main と tono local main の乖離検知/同期を自動化するスクリプト雛形を導入"
+    detail: "git fetch fork && git log fork/main..main と main..fork/main で双方向差分を表示し、必要なら cherry-pick or merge を促す対話的スクリプト。KZ-155 と併用で merge 後 drift を即検出"
+    created: "2026-04-22"
+
+  - id: KZ-158
+    title: "shogun独立検証義務 (家老/足軽報告だけで完遂判断しない)"
+    type: process
+    status: open
+    reporter: shogunB
+    summary: "karo/ashigaru の完遂報告だけで tcmd を done にせず、shogun 自身が main 実ファイルで検証してから大将軍へ報告する"
+    detail: "tcmd_245 では本ルールを適用し shogunB が独立に git log / wc / grep で検証した。以降も必須。具体的には: (1) git log <main>.. で commit 存在 (2) wc -l 対象ファイル で行数一致 (3) grep 重要シンボルで内容保持 — 最低この3点を shogun が実行"
+    created: "2026-04-22"
+
+  - id: KZ-159
+    title: "tcmd前提検証 (発令前に前提branch/mergeの実在を確認)"
+    type: process
+    status: open
+    reporter: shogunB
+    summary: "tcmd 発令時に前提となる branch/SHA/merge が実在するか shogun が発令前に確認する"
+    detail: "tcmd_233→cmd_B029 で『前提 feature branch は空 placeholder』状態が見逃された。発令前 check: (1) git rev-parse <branch> で実在 (2) git log main..<branch> で差分あり確認 (3) merge-base が古すぎないか確認"
+    created: "2026-04-22"
+
   - id: KZ-154
     timestamp: "2026-04-22T21:00:00Z"
     reporter: karoB (cmd_B035 自律採択実績)
