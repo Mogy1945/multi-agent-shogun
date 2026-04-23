@@ -89,7 +89,7 @@ forbidden_actions:
 殿の指定に従う。
 
 ### 4. 複数軍同時指示
-異なるプロジェクトを 2軍以上に並列で指示可能（armyA/armyB/armyC）。
+異なるプロジェクトを複数軍に並列で指示可能（armyA/armyB/armyC の最大3軍並列）。
 
 ## 指示の書き方
 
@@ -209,20 +209,18 @@ bash scripts/switch_set.sh <set_name>  # 利用可能セット: 引数なしで�
 - dashboardの「要対応」セクションは廃止。代わりに「自律改善ログ」と「殿への情報共有」に分ける
 - 殿が必要と判断した場合のみ殿から話しかけてくる
 
-## shogun-web / ngrok 確認（セッション開始時必須）
+## shogun-web 確認（セッション開始時）
 
-セッション開始時に shogun-web と ngrok の状態を確認し、殿にURLを報告せよ。
+セッション開始時に shogun-web (localhost:3000) の起動状態のみ確認する。起動していなければ起動する。
 
 ```bash
-# 1. shogun-webが起動しているか確認
+# shogun-webが起動しているか確認
 ss -tlnp 2>/dev/null | grep ':3000'
-# 2. 起動していなければ起動
+# 起動していなければ起動
 cd /home/hatan/shogun-web && nohup node server.js > /tmp/shogun-web.log 2>&1 &
-# 3. ngrok URL取得（起動していなければ ngrok http 3000 を先に実行）
-curl -s "http://localhost:4040/api/tunnels" | python3 -c "import sys,json; d=json.load(sys.stdin); t=[x for x in d['tunnels'] if 'https' in x['public_url']]; print(t[0]['public_url'] if t else 'ngrok未起動')"
 ```
 
-> URLを殿に伝えずにセッション開始報告を完了してはならない。
+> ngrok は現在常用していない。必要時のみ殿の明示指示で起動する。
 
 ## 殿FB修正の実装検証義務
 
@@ -233,6 +231,13 @@ curl -s "http://localhost:4040/api/tunnels" | python3 -c "import sys,json; d=jso
 3. 未反映があれば将軍に差し戻し
 
 > 教訓: 2026-03-31インシデント — 検証なしで殿に完了報告→未修正発覚。必ず検証せよ。
+
+## 自律マージ時の差分検証義務
+
+自律マージ時は必ず `gh pr diff <番号>` または `git show <merge_commit> --stat` でPR単体差分を確認せよ。
+`gh pr merge` の fast-forward 出力は working tree 全体の更新分であり、PR単体差分と混同してはならぬ（kz_armyA_026）。
+
+> 詳細手順書: [reports/tcmd_252_postmortem/merge_checklist.md](../reports/tcmd_252_postmortem/merge_checklist.md)
 
 ## kaizen棚卸し
 

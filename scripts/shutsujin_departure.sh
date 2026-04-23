@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# shutsujin_departure.sh — 出陣（大将軍+2軍団 起動スクリプト）
+# shutsujin_departure.sh — 出陣（大将軍+3軍団 起動スクリプト）
 # ============================================================
 # 使い方:
 #   ./scripts/shutsujin_departure.sh           # 全起動（セッション作成 + Claude Code起動）
@@ -14,6 +14,7 @@
 #   taishogun セッション (1ペイン): 大将軍
 #   armyA セッション (10ペイン):    将軍A + 家老A + 足軽A1-A8
 #   armyB セッション (10ペイン):    将軍B + 家老B + 足軽B1-B8
+#   armyC セッション (10ペイン):    将軍C + 家老C + 足軽C1-C8
 
 set -euo pipefail
 
@@ -87,7 +88,7 @@ parse_options() {
                 ;;
             -h|--help)
                 echo ""
-                echo "🏯 multi-agent-shogun 出陣スクリプト（大将軍+2軍団制）"
+                echo "🏯 multi-agent-shogun 出陣スクリプト（大将軍+3軍団制）"
                 echo ""
                 echo "使用方法: ./shutsujin_departure.sh [オプション]"
                 echo ""
@@ -97,7 +98,7 @@ parse_options() {
                 echo "  -k, --kessen        決戦の陣（全足軽をOpus Thinkingで起動）"
                 echo "                      未指定時は平時の陣（足軽1-4=Sonnet, 足軽5-8=Opus）"
                 echo "  -s, --setup-only    tmuxセッションのセットアップのみ（Claude起動なし）"
-                echo "  -t, --terminal      Windows Terminal で3タブ展開"
+                echo "  -t, --terminal      Windows Terminal で4タブ展開"
                 echo "  -shell, --shell SH  シェルを指定（bash または zsh）"
                 echo "                      未指定時は config/settings.yaml の設定を使用"
                 echo "  -h, --help          このヘルプを表示"
@@ -111,10 +112,11 @@ parse_options() {
                 echo "  ./shutsujin_departure.sh -c -k        # クリーンスタート＋決戦の陣"
                 echo "  ./shutsujin_departure.sh -shell zsh   # zsh用プロンプトで起動"
                 echo ""
-                echo "セッション構成（21ペイン）:"
+                echo "セッション構成（31ペイン）:"
                 echo "  taishogun: 大将軍 (1ペイン)   — Opus"
                 echo "  armyA:     将軍A + 家老A + 足軽A1-A8 (10ペイン)"
                 echo "  armyB:     将軍B + 家老B + 足軽B1-B8 (10ペイン)"
+                echo "  armyC:     将軍C + 家老C + 足軽C1-C8 (10ペイン)"
                 echo ""
                 echo "陣形:"
                 echo "  平時の陣（デフォルト）: 足軽1-4=Sonnet Thinking, 足軽5-8=Opus Thinking"
@@ -125,6 +127,7 @@ parse_options() {
                 echo "  cst   → tmux attach-session -t taishogun"
                 echo "  csa   → tmux attach-session -t armyA"
                 echo "  csb   → tmux attach-session -t armyB"
+                echo "  csc   → tmux attach-session -t armyC"
                 echo ""
                 exit 0
                 ;;
@@ -186,21 +189,21 @@ show_battle_cry() {
     echo -e "\033[1;31m╚══════════════════════════════════════════════════════════════════════════════════╝\033[0m"
     echo ""
 
-    # 足軽隊列（2軍16名）
+    # 足軽隊列（3軍24名）
     echo -e "\033[1;34m  ╔═════════════════════════════════════════════════════════════════════════════╗\033[0m"
-    echo -e "\033[1;34m  ║\033[0m               \033[1;37m【 足 軽 隊 列 ・ 二 軍 十 六 名 配 備 】\033[0m                  \033[1;34m║\033[0m"
+    echo -e "\033[1;34m  ║\033[0m              \033[1;37m【 足 軽 隊 列 ・ 三 軍 二 十 四 名 配 備 】\033[0m                 \033[1;34m║\033[0m"
     echo -e "\033[1;34m  ╚═════════════════════════════════════════════════════════════════════════════╝\033[0m"
 
     cat << 'ASHIGARU_EOF'
 
-    ＜軍A＞                                         ＜軍B＞
+    ＜軍A＞                 ＜軍B＞                 ＜軍C＞
        /\      /\      /\      /\      /\      /\      /\      /\
       /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\
      /_||\   /_||\   /_||\   /_||\   /_||\   /_||\   /_||\   /_||\
        ||      ||      ||      ||      ||      ||      ||      ||
       /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\
       /  \    /  \    /  \    /  \    /  \    /  \    /  \    /  \
-     [A1]    [A2]    [A3]    [A4]    [B1]    [B2]    [B3]    [B4]
+     [A1]    [A2]    [A3]    [B1]    [B2]    [B3]    [C1]    [C2]
 
        /\      /\      /\      /\      /\      /\      /\      /\
       /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\
@@ -208,7 +211,15 @@ show_battle_cry() {
        ||      ||      ||      ||      ||      ||      ||      ||
       /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\
       /  \    /  \    /  \    /  \    /  \    /  \    /  \    /  \
-     [A5]    [A6]    [A7]    [A8]    [B5]    [B6]    [B7]    [B8]
+     [A4]    [A5]    [B4]    [B5]    [B6]    [C3]    [C4]    [C5]
+
+       /\      /\      /\      /\      /\      /\      /\      /\
+      /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\
+     /_||\   /_||\   /_||\   /_||\   /_||\   /_||\   /_||\   /_||\
+       ||      ||      ||      ||      ||      ||      ||      ||
+      /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\
+      /  \    /  \    /  \    /  \    /  \    /  \    /  \    /  \
+     [A6]    [A7]    [A8]    [B7]    [B8]    [C6]    [C7]    [C8]
 
 ASHIGARU_EOF
 
@@ -217,9 +228,9 @@ ASHIGARU_EOF
 
     # システム情報ボックス（大将軍仕様）
     echo -e "\033[1;33m  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m  \033[1;37m🏯 multi-agent-shogun\033[0m  〜 \033[1;36m大将軍+2軍団 並列統率システム\033[0m 〜              \033[1;33m┃\033[0m"
+    echo -e "\033[1;33m  ┃\033[0m  \033[1;37m🏯 multi-agent-shogun\033[0m  〜 \033[1;36m大将軍+3軍団 並列統率システム\033[0m 〜              \033[1;33m┃\033[0m"
     echo -e "\033[1;33m  ┃\033[0m                                                                           \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m    \033[1;33m大将軍\033[0m: 全軍統括   \033[1;35m将軍×2\033[0m: 軍団指揮   \033[1;31m家老×2\033[0m: 管理   \033[1;34m足軽×16\033[0m: 実働  \033[1;33m┃\033[0m"
+    echo -e "\033[1;33m  ┃\033[0m    \033[1;33m大将軍\033[0m: 全軍統括   \033[1;35m将軍×3\033[0m: 軍団指揮   \033[1;31m家老×3\033[0m: 管理   \033[1;34m足軽×24\033[0m: 実働  \033[1;33m┃\033[0m"
     echo -e "\033[1;33m  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\033[0m"
     echo ""
 
@@ -238,11 +249,12 @@ ASHIGARU_EOF
 cleanup_sessions() {
     log_info "既存の陣を撤収中..."
 
-    # 大将軍+2軍団セッション
+    # 大将軍+3軍団セッション
     tmux kill-session -t taishogun 2>/dev/null && log_info "  └─ taishogun陣、撤収完了" || true
     tmux kill-session -t armyA 2>/dev/null && log_info "  └─ armyA陣、撤収完了" || true
     tmux kill-session -t armyB 2>/dev/null && log_info "  └─ armyB陣、撤収完了" || true
-    tmux kill-session -t shinobi 2>/dev/null && log_info "  └─ shinobi陣、撤収完了" || true
+    tmux kill-session -t armyC 2>/dev/null && log_info "  └─ armyC陣、撤収完了" || true
+    tmux kill-session -t shinobi 2>/dev/null && log_info "  └─ shinobi陣（旧）、撤収完了" || true
 
     sleep 0.5
 }
@@ -259,7 +271,7 @@ backup_and_clean() {
     NEED_BACKUP=false
 
     # 旧データの存在チェック
-    for army in armyA armyB; do
+    for army in armyA armyB armyC; do
         if [ -d "$BASE_DIR/queue/$army" ]; then
             if [ "$(ls -A "$BASE_DIR/queue/$army/tasks/" 2>/dev/null)" ] || \
                [ -f "$BASE_DIR/queue/$army/shogun_to_karo.yaml" ]; then
@@ -273,13 +285,14 @@ backup_and_clean() {
         cp -r "$BASE_DIR/queue/" "$BACKUP_DIR/" 2>/dev/null || true
         cp "$BASE_DIR/dashboard_armyA.md" "$BACKUP_DIR/" 2>/dev/null || true
         cp "$BASE_DIR/dashboard_armyB.md" "$BACKUP_DIR/" 2>/dev/null || true
+        cp "$BASE_DIR/dashboard_armyC.md" "$BACKUP_DIR/" 2>/dev/null || true
         log_info "前回の記録をバックアップ: $BACKUP_DIR"
     fi
 
     log_info "前回の軍議記録を破棄中..."
 
     # 軍別キューリセット
-    for army in armyA armyB; do
+    for army in armyA armyB armyC; do
         local queue_dir="$BASE_DIR/queue/$army"
         mkdir -p "$queue_dir/tasks" "$queue_dir/reports" "$queue_dir/archive"
 
@@ -296,7 +309,7 @@ backup_and_clean() {
         echo "archive: []" > "$queue_dir/kaizen_archive.yaml"
 
         # 足軽タスク・レポートファイルリセット
-        local suffix="${army: -1}"  # A or B
+        local suffix="${army: -1}"  # A, B, or C
         for i in $(seq 1 8); do
             cat > "$queue_dir/tasks/ashigaru${i}.yaml" << EOF
 # 足軽${suffix}${i}専用タスクファイル
@@ -321,14 +334,7 @@ EOF
     # taishogun_to_shogun.yaml リセット
     echo "queue: []" > "$BASE_DIR/queue/taishogun_to_shogun.yaml"
 
-    # shinobiキューリセット
-    if [ -d "queue/shinobi" ]; then
-        log_info "  shinobiキューをリセット..."
-        echo "queue: []" > queue/taishogun_to_shinobi.yaml 2>/dev/null || true
-        for tai in 1 2 3; do
-            echo -e "task:\n  task_id: null\n  status: idle\n  timestamp: \"\"\n  description: \"\"" > "queue/shinobi/tasks/shinobi${tai}.yaml" 2>/dev/null || true
-        done
-    fi
+    # 旧shinobiキューは tcmd_233 で軍C統合済み。archive は保護（touchしない）。
 
     log_success "陣払い完了"
 }
@@ -379,45 +385,8 @@ init_army_queues() {
 }
 
 # ============================================================
-# 6b. init_shinobi_queues() — 忍衆キューディレクトリ初期化
+# 6b. (廃止) init_shinobi_queues() — tcmd_233 で軍C へ統合済み
 # ============================================================
-init_shinobi_queues() {
-    log_war "忍衆キューを初期化中..."
-    mkdir -p queue/shinobi/tasks queue/shinobi/reports queue/shinobi/archive
-
-    # 大将軍→忍頭 密命キュー
-    if [ ! -f "queue/taishogun_to_shinobi.yaml" ]; then
-        cat > queue/taishogun_to_shinobi.yaml << 'YAML_EOF'
-# ============================================================
-# taishogun_to_shinobi.yaml — 大将軍 → 忍頭 密命キュー
-# ============================================================
-queue: []
-YAML_EOF
-    fi
-
-    # 忍 任務書
-    for tai in 1 2 3; do
-        if [ ! -f "queue/shinobi/tasks/shinobi${tai}.yaml" ]; then
-            cat > "queue/shinobi/tasks/shinobi${tai}.yaml" << 'YAML_EOF'
-task:
-  task_id: null
-  status: idle
-  timestamp: ""
-  description: ""
-YAML_EOF
-        fi
-    done
-
-    # gitkeep
-    touch queue/shinobi/reports/.gitkeep 2>/dev/null || true
-
-    # アーカイブ
-    if [ ! -f "queue/shinobi/archive/commands.yaml" ]; then
-        echo "archive: []" > queue/shinobi/archive/commands.yaml
-    fi
-
-    log_success "  └─ 忍衆キュー初期化完了"
-}
 
 # ============================================================
 # 7. init_dashboards() — --clean時: ダッシュボード初期化
@@ -431,13 +400,13 @@ init_dashboards() {
     local TIMESTAMP
     TIMESTAMP=$(date "+%Y-%m-%d %H:%M")
 
-    for army_label in "軍A" "軍B"; do
+    for army_label in "軍A" "軍B" "軍C"; do
         local filename
-        if [ "$army_label" = "軍A" ]; then
-            filename="$BASE_DIR/dashboard_armyA.md"
-        else
-            filename="$BASE_DIR/dashboard_armyB.md"
-        fi
+        case "$army_label" in
+            "軍A") filename="$BASE_DIR/dashboard_armyA.md" ;;
+            "軍B") filename="$BASE_DIR/dashboard_armyB.md" ;;
+            "軍C") filename="$BASE_DIR/dashboard_armyC.md" ;;
+        esac
 
         if [ "$LANG_SETTING" = "ja" ]; then
             cat > "$filename" << EOF
@@ -496,32 +465,7 @@ EOF
         fi
     done
 
-    # 忍衆ダッシュボード
-    if [ ! -f "$BASE_DIR/dashboard_shinobi.md" ]; then
-        cat > "$BASE_DIR/dashboard_shinobi.md" << 'MD_EOF'
-# 忍衆 ダッシュボード
-
-> **更新者**: 忍頭（shinobicho）
-> **最終更新**: —
-
-## 🚨 要対応
-
-（なし）
-
-## 📋 現在任務
-
-| 担当 | 任務ID | 内容 | ステータス |
-|------|---------|------|----------|
-| 忍頭 | — | — | idle |
-| 忍1 | — | — | idle |
-| 忍2 | — | — | idle |
-| 忍3 | — | — | idle |
-
-## ✅ 完了任務
-
-（なし）
-MD_EOF
-    fi
+    # 旧忍衆ダッシュボードは tcmd_233 で dashboard_armyC.md に統合済み
 
     log_success "  └─ ダッシュボード初期化完了 (言語: $LANG_SETTING)"
 }
@@ -576,47 +520,8 @@ setup_taishogun() {
 }
 
 # ============================================================
-# 9b. setup_shinobi() — 忍衆セッション作成（4ペイン）
+# 9b. (廃止) setup_shinobi() — tcmd_233 で軍C (setup_army "armyC") に統合
 # ============================================================
-setup_shinobi() {
-    log_war "忍衆の陣を構築中（忍頭+忍×3）..."
-    tmux new-session -d -s shinobi -x 200 -y 50
-    tmux rename-window -t "shinobi:0" "agents"
-
-    # 3回splitで合計4ペイン
-    for _ in $(seq 1 3); do
-        tmux split-window -t "shinobi:agents" || true
-        tmux select-layout -t "shinobi:agents" tiled
-    done
-    tmux select-layout -t "shinobi:agents" tiled
-
-    # 忍頭（pane 0）
-    tmux set-option -p -t "shinobi:agents.0" @agent_id "shinobicho"
-    tmux set-option -p -t "shinobi:agents.0" @army_id "shinobi"
-    tmux set-option -p -t "shinobi:agents.0" @army_session "shinobi"
-    tmux set-option -p -t "shinobi:agents.0" @model_name "Opus"
-    tmux select-pane -t "shinobi:agents.0" -T "shinobicho (Opus)"
-    local PROMPT_STR
-    PROMPT_STR=$(generate_prompt "忍頭" "cyan" "$SHELL_SETTING")
-    tmux send-keys -t "shinobi:agents.0" "cd \"$BASE_DIR\" && export PS1='${PROMPT_STR}' && clear" Enter
-
-    # 忍（pane 1-3）
-    for i in $(seq 1 3); do
-        local agent_id="shinobi${i}"
-        local model_name="Sonnet"
-        tmux set-option -p -t "shinobi:agents.${i}" @agent_id "$agent_id"
-        tmux set-option -p -t "shinobi:agents.${i}" @army_id "shinobi"
-        tmux set-option -p -t "shinobi:agents.${i}" @army_session "shinobi"
-        tmux set-option -p -t "shinobi:agents.${i}" @model_name "$model_name"
-        tmux select-pane -t "shinobi:agents.${i}" -T "${agent_id} (${model_name})"
-        PROMPT_STR=$(generate_prompt "忍${i}" "cyan" "$SHELL_SETTING")
-        tmux send-keys -t "shinobi:agents.${i}" "cd \"$BASE_DIR\" && export PS1='${PROMPT_STR}' && clear" Enter
-    done
-
-    tmux set-option -t shinobi -w pane-border-status top
-    tmux set-option -t shinobi -w pane-border-format '#{pane_index} #{@agent_id} (#{?#{==:#{@model_name},},unknown,#{@model_name}})'
-    log_success "  └─ shinobi の陣、構築完了"
-}
 
 # ============================================================
 # 10. setup_army(army_id) — 軍団セッション作成（10ペイン）
@@ -765,25 +670,7 @@ launch_claude_army() {
 }
 
 # ============================================================
-# 13b. launch_claude_shinobi() — 忍衆にClaude Code起動
-# ============================================================
-launch_claude_shinobi() {
-    log_war "忍衆に Claude Code を召喚中..."
-    # 忍頭（Opus）
-    tmux send-keys -t "shinobi:agents.0" \
-        "MAX_THINKING_TOKENS=0 $CLAUDE_CMD --model $MODEL_SHINOBICHO --dangerously-skip-permissions" \
-        Enter
-    sleep 1
-    log_info "  └─ 忍頭、召喚完了"
-    # 忍（1-3）
-    for i in $(seq 1 3); do
-        tmux send-keys -t "shinobi:agents.${i}" \
-            "$CLAUDE_CMD --model $MODEL_SHINOBI --dangerously-skip-permissions" \
-            Enter
-        sleep 1
-    done
-    log_info "  └─ 忍1-3、召喚完了"
-}
+# 13b. (廃止) launch_claude_shinobi() — tcmd_233 で launch_claude_army "armyC" に統合
 
 # ============================================================
 # 14. send_initial_instructions() — 全エージェントに指示書送信
@@ -808,7 +695,7 @@ send_initial_instructions() {
     sleep 2
 
     # 各軍に指示
-    for army_id in armyA armyB; do
+    for army_id in armyA armyB armyC; do
         # 将軍
         tmux send-keys -t "${army_id}:agents.0" 'instructions/shogun.md を読んでセッションを開始せよ。'
         sleep 0.5
@@ -833,19 +720,7 @@ send_initial_instructions() {
         log_info "  └─ ${army_id} 全エージェントに指示書伝達完了"
     done
 
-    # --- 忍衆 ---
-    log_info "忍衆に初期指示を送信中..."
-    tmux send-keys -t "shinobi:agents.0" 'instructions/sets/shinobi/shinobicho.md を読んでセッションを開始せよ。'
-    sleep 0.5
-    tmux send-keys -t "shinobi:agents.0" Enter
-    sleep 2
-    for i in $(seq 1 3); do
-        tmux send-keys -t "shinobi:agents.${i}" "instructions/sets/shinobi/shinobi.md を読んでセッションを開始せよ。"
-        sleep 0.3
-        tmux send-keys -t "shinobi:agents.${i}" Enter
-        sleep 0.5
-    done
-    log_success "  └─ 忍衆初期指示送信完了"
+    # 旧忍衆は tcmd_233 で軍C に統合済み。別途指示伝達は不要。
 
     log_success "全軍に指示書伝達完了"
 }
@@ -861,7 +736,7 @@ show_formation() {
     tmux list-sessions 2>/dev/null | sed 's/^/     /'
     echo ""
     echo "  ┌──────────────────────────────────────────────────────────┐"
-    echo "  │  📋 布陣図 (Formation) — 大将軍+2軍団制                  │"
+    echo "  │  📋 布陣図 (Formation) — 大将軍+3軍団制                  │"
     echo "  └──────────────────────────────────────────────────────────┘"
     echo ""
     echo "     【taishogunセッション】大将軍の本陣"
@@ -881,6 +756,13 @@ show_formation() {
     echo "     │ 将軍B(0) │ 家老B(1) │ 足軽B1(2)│ 足軽B2(3)│ 足軽B3(4)│"
     echo "     ├──────────┼──────────┼──────────┼──────────┼──────────┤"
     echo "     │ 足軽B4(5)│ 足軽B5(6)│ 足軽B6(7)│ 足軽B7(8)│ 足軽B8(9)│"
+    echo "     └──────────┴──────────┴──────────┴──────────┴──────────┘"
+    echo ""
+    echo "     【armyCセッション】軍C（10ペイン）"
+    echo "     ┌──────────┬──────────┬──────────┬──────────┬──────────┐"
+    echo "     │ 将軍C(0) │ 家老C(1) │ 足軽C1(2)│ 足軽C2(3)│ 足軽C3(4)│"
+    echo "     ├──────────┼──────────┼──────────┼──────────┼──────────┤"
+    echo "     │ 足軽C4(5)│ 足軽C5(6)│ 足軽C6(7)│ 足軽C7(8)│ 足軽C8(9)│"
     echo "     └──────────┴──────────┴──────────┴──────────┴──────────┘"
     echo ""
 }
@@ -916,6 +798,9 @@ show_completion() {
     echo "  │                                                          │"
     echo "  │  軍Bの陣を確認:                                          │"
     echo "  │     tmux attach-session -t armyB        (または: csb)    │"
+    echo "  │                                                          │"
+    echo "  │  軍Cの陣を確認:                                          │"
+    echo "  │     tmux attach-session -t armyC        (または: csc)    │"
     echo "  └──────────────────────────────────────────────────────────┘"
     echo ""
     echo "  ════════════════════════════════════════════════════════════"
@@ -945,27 +830,29 @@ alias csst="cd $BASE_DIR && ./scripts/shutsujin_departure.sh"
 alias cst="tmux attach-session -t taishogun"
 alias csa="tmux attach-session -t armyA"
 alias csb="tmux attach-session -t armyB"
+alias csc="tmux attach-session -t armyC"
 EOF
 
-    log_success "  └─ エイリアス登録完了（csst, cst, csa, csb）"
+    log_success "  └─ エイリアス登録完了（csst, cst, csa, csb, csc）"
 }
 
 # ============================================================
-# 18. open_terminal_tabs() — -t時: Windows Terminal 3タブ展開
+# 18. open_terminal_tabs() — -t時: Windows Terminal 4タブ展開
 # ============================================================
 open_terminal_tabs() {
     if [ "$OPEN_TERMINAL" != true ]; then
         return
     fi
 
-    log_info "Windows Terminal で3タブを展開中..."
+    log_info "Windows Terminal で4タブを展開中..."
 
     if command -v wt.exe &> /dev/null; then
         wt.exe -w 0 \
             new-tab wsl.exe -e bash -c "tmux attach-session -t taishogun" \; \
             new-tab wsl.exe -e bash -c "tmux attach-session -t armyA" \; \
-            new-tab wsl.exe -e bash -c "tmux attach-session -t armyB"
-        log_success "  └─ ターミナルタブ展開完了（taishogun, armyA, armyB）"
+            new-tab wsl.exe -e bash -c "tmux attach-session -t armyB" \; \
+            new-tab wsl.exe -e bash -c "tmux attach-session -t armyC"
+        log_success "  └─ ターミナルタブ展開完了（taishogun, armyA, armyB, armyC）"
     else
         log_info "  └─ wt.exe が見つかりません。手動でアタッチしてください。"
     fi
@@ -1011,7 +898,7 @@ main() {
     # 7. キューディレクトリ初期化（通常時: 未存在時のみ作成）
     init_army_queues "armyA"
     init_army_queues "armyB"
-    init_shinobi_queues
+    init_army_queues "armyC"
 
     # 8. ダッシュボード初期化（--clean時のみ）
     init_dashboards
@@ -1020,12 +907,12 @@ main() {
 
     # 9. セッション作成
     setup_taishogun
-    setup_shinobi
     setup_army "armyA"
     setup_army "armyB"
+    setup_army "armyC"
 
     echo ""
-    log_success "セッション作成完了: taishogun(1) + shinobi(4) + armyA(10) + armyB(10) = 25ペイン"
+    log_success "セッション作成完了: taishogun(1) + armyA(10) + armyB(10) + armyC(10) = 31ペイン"
     echo ""
 
     # 10. エイリアス登録
@@ -1041,9 +928,9 @@ main() {
         fi
 
         launch_claude_taishogun
-        launch_claude_shinobi
         launch_claude_army "armyA"
         launch_claude_army "armyB"
+        launch_claude_army "armyC"
 
         echo ""
         if [ "$KESSEN_MODE" = true ]; then

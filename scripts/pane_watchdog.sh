@@ -50,11 +50,17 @@ AGENTS=(
     "ashigaruB6 armyB Sonnet"
     "ashigaruB7 armyB Sonnet"
     "ashigaruB8 armyB Sonnet"
-    # 忍衆
-    "shinobicho shinobi Opus"
-    "shinobi1 shinobi Sonnet"
-    "shinobi2 shinobi Sonnet"
-    "shinobi3 shinobi Sonnet"
+    # armyC (tcmd_233 で旧忍衆から統合)
+    "shogunC armyC Opus"
+    "karoC armyC Opus"
+    "ashigaruC1 armyC Sonnet"
+    "ashigaruC2 armyC Sonnet"
+    "ashigaruC3 armyC Sonnet"
+    "ashigaruC4 armyC Sonnet"
+    "ashigaruC5 armyC Sonnet"
+    "ashigaruC6 armyC Sonnet"
+    "ashigaruC7 armyC Sonnet"
+    "ashigaruC8 armyC Sonnet"
     # taishogun は固定ペイン（main.0）のため除外
 )
 

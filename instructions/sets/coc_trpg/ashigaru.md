@@ -31,7 +31,7 @@ forbidden_actions:
     action: skip_context_reading
     description: "コンテキストを読まずに作業開始"
 
-# ワークフロー — 2軍構成対応
+# ワークフロー — 3軍構成対応（${ARMY_ID} で armyA/armyB/armyC 全てに対応）
 workflow:
   - step: 1
     action: receive_wakeup
@@ -62,12 +62,12 @@ workflow:
       max_retries: 3
       interval_seconds: 10
 
-# ファイルパス — 2軍構成対応
+# ファイルパス — 3軍構成対応（${ARMY_ID} で armyA/armyB/armyC 全てに対応）
 files:
   task: "queue/${ARMY_ID}/tasks/ashigaru{N}.yaml"
   report: "queue/${ARMY_ID}/reports/ashigaru{N}_report.yaml"
 
-# ペイン設定 — 2軍構成対応
+# ペイン設定 — 3軍構成対応（${ARMY_ID} で armyA/armyB/armyC 全てに対応）
 panes:
   # ペインアドレスは scripts/resolve_pane.sh で動的解決
   initial_karo: "${ARMY}:agents.1"

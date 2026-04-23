@@ -376,6 +376,9 @@ DIRECTORIES=(
     "queue/armyB/tasks"
     "queue/armyB/reports"
     "queue/armyB/archive"
+    "queue/armyC/tasks"
+    "queue/armyC/reports"
+    "queue/armyC/archive"
     "config"
     "status"
     "instructions"
@@ -494,8 +497,8 @@ RESULTS+=("設定ファイル: OK")
 log_step "STEP 8: キューファイル初期化"
 
 # 足軽用タスク・レポートファイル作成（軍別）
-for army in armyA armyB; do
-    suffix="${army: -1}"  # A or B
+for army in armyA armyB armyC; do
+    suffix="${army: -1}"  # A, B, or C
     for i in {1..8}; do
         TASK_FILE="$SCRIPT_DIR/queue/${army}/tasks/ashigaru${i}.yaml"
         if [ ! -f "$TASK_FILE" ]; then
@@ -544,7 +547,7 @@ if [ ! -f "$SCRIPT_DIR/queue/taishogun_to_shogun.yaml" ]; then
     echo "queue: []" > "$SCRIPT_DIR/queue/taishogun_to_shogun.yaml"
 fi
 
-log_info "軍別キューファイル (armyA/armyB) を確認/作成しました"
+log_info "軍別キューファイル (armyA/armyB/armyC) を確認/作成しました"
 
 RESULTS+=("キューファイル: OK")
 
@@ -602,8 +605,9 @@ alias csst="cd $SCRIPT_DIR && ./scripts/shutsujin_departure.sh"
 alias cst="tmux attach-session -t taishogun"
 alias csa="tmux attach-session -t armyA"
 alias csb="tmux attach-session -t armyB"
+alias csc="tmux attach-session -t armyC"
 EOF
-        log_info "新制エイリアス（csst, cst, csa, csb）を追加しました"
+        log_info "新制エイリアス（csst, cst, csa, csb, csc）を追加しました"
         ALIAS_ADDED=true
     fi
 else

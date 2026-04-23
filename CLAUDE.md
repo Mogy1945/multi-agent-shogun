@@ -1,11 +1,11 @@
 # multi-agent-shogun システム構成
 
-> **Version**: 3.0
-> **Last Updated**: 2026-02-20
+> **Version**: 3.1
+> **Last Updated**: 2026-04-23
 
 ## 概要
 multi-agent-shogunは、Claude Code + tmux を使ったマルチエージェント並列開発基盤である。
-戦国時代の軍制をモチーフとした階層構造で、**大将軍+2軍団**で複数プロジェクトを並行管理する。
+戦国時代の軍制をモチーフとした階層構造で、**大将軍+3軍団**で複数プロジェクトを並行管理する。
 
 ## セッション開始時の必須行動（全エージェント必須）
 
@@ -16,7 +16,7 @@ multi-agent-shogunは、Claude Code + tmux を使ったマルチエージェン�
 2. **自分の役割と所属軍を確認せよ**:
    ```bash
    tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'      # → 自分のID
-   tmux display-message -t "$TMUX_PANE" -p '#{@army_id}'       # → 所属軍（armyA/armyB/taishogun）
+   tmux display-message -t "$TMUX_PANE" -p '#{@army_id}'       # → 所属軍（armyA/armyB/armyC/taishogun）
    tmux display-message -t "$TMUX_PANE" -p '#{@army_session}'  # → セッション名
    ```
 3. **自分の役割に対応する instructions を読め**:
@@ -24,8 +24,6 @@ multi-agent-shogunは、Claude Code + tmux を使ったマルチエージェン�
    - 将軍 → instructions/shogun.md
    - 家老 → instructions/karo.md
    - 足軽 → instructions/ashigaru.md
-   - 忍頭 → instructions/shinobicho.md
-   - 忍 → instructions/shinobi.md
 4. **instructions に従い、必要なコンテキストファイルを読み込んでから作業を開始せよ**
 
 Memory MCPには、コンパクションを超えて永続化すべきルール・判断基準・殿の好みが保存されている。
@@ -46,19 +44,16 @@ Memory MCPには、コンパクションを超えて永続化すべきルール�
    tmux display-message -t "$TMUX_PANE" -p '#{@army_session}'
    ```
    - `taishogun` → 大将軍
-   - `shogunA` / `shogunB` → 将軍（軍A/軍B）
-   - `karoA` / `karoB` → 家老（軍A/軍B）
+   - `shogunA` / `shogunB` / `shogunC` → 将軍（軍A/軍B/軍C）
+   - `karoA` / `karoB` / `karoC` → 家老（軍A/軍B/軍C）
    - `ashigaruA1` ～ `ashigaruA8` → 足軽（軍A）
    - `ashigaruB1` ～ `ashigaruB8` → 足軽（軍B）
-   - `shinobicho` → 忍頭
-   - `shinobi1` ～ `shinobi3` → 忍
+   - `ashigaruC1` ～ `ashigaruC8` → 足軽（軍C）
 2. **対応する instructions を読む**:
    - 大将軍 → instructions/taishogun.md
    - 将軍 → instructions/shogun.md
    - 家老 → instructions/karo.md
    - 足軽 → instructions/ashigaru.md
-   - 忍頭 → instructions/shinobicho.md
-   - 忍 → instructions/shinobi.md
 3. **instructions 内の「コンパクション復帰手順」に従い、正データから状況を再把握する**
 4. **禁止事項を確認してから作業開始**
 
@@ -161,28 +156,25 @@ Layer 4: Session（揮発・コンテキスト内）
 │   TAISHOGUN      │ ← 大将軍（全軍統括）
 │   (大将軍)       │
 └──────┬───────────┘
-       │
-       ├─────────────────┬───────────────────────┐
-       │                 │                         │
-       │ taishogun_      │ taishogun_              │ taishogun_
-       │ to_shinobi.yaml │ to_shogun.yaml          │ to_shogun.yaml
-       ▼                 ▼                         ▼
-┌──────────────┐ ┌──────────────┐       ┌──────────────┐
-│  SHINOBICHO  │ │  SHOGUN A    │       │  SHOGUN B    │
-│  (忍頭)      │ │  (将軍A)     │       │  (将軍B)     │
-└──────┬───────┘ └──────┬───────┘       └──────┬───────┘
-       │                │                       │
-       ▼                ▼                       ▼
-┌───┬───┬───┐  ┌──────────────┐       ┌──────────────┐
-│S1 │S2 │S3 │  │   KARO A     │       │   KARO B     │
-└───┴───┴───┘  │  (家老A)     │       │  (家老B)     │
-  忍            └──────┬───────┘       └──────┬───────┘
-                       │                       │
-                       ▼                       ▼
-               ┌───┬───┬───┬───┐     ┌───┬───┬───┬───┐
-               │A1 │A2 │...│A8 │     │B1 │B2 │...│B8 │
-               └───┴───┴───┴───┘     └───┴───┴───┴───┘
-                  軍A足軽                軍B足軽
+       │  queue/taishogun_to_shogun.yaml （target_army: armyA/armyB/armyC）
+       ├─────────────────────┬────────────────────────┐
+       ▼                     ▼                        ▼
+┌──────────────┐     ┌──────────────┐        ┌──────────────┐
+│  SHOGUN A    │     │  SHOGUN B    │        │  SHOGUN C    │
+│  (将軍A)     │     │  (将軍B)     │        │  (将軍C)     │
+└──────┬───────┘     └──────┬───────┘        └──────┬───────┘
+       │                    │                       │
+       ▼                    ▼                       ▼
+┌──────────────┐     ┌──────────────┐        ┌──────────────┐
+│   KARO A     │     │   KARO B     │        │   KARO C     │
+│  (家老A)     │     │  (家老B)     │        │  (家老C)     │
+└──────┬───────┘     └──────┬───────┘        └──────┬───────┘
+       │                    │                       │
+       ▼                    ▼                       ▼
+┌───┬───┬───┬───┐   ┌───┬───┬───┬───┐     ┌───┬───┬───┬───┐
+│A1 │A2 │...│A8 │   │B1 │B2 │...│B8 │     │C1 │C2 │...│C8 │
+└───┴───┴───┴───┘   └───┴───┴───┴───┘     └───┴───┴───┴───┘
+    軍A足軽             軍B足軽               軍C足軽
 ```
 
 ## ファイル操作の鉄則（全エージェント必須）
@@ -215,9 +207,9 @@ Layer 4: Session（揮発・コンテキスト内）
 
 各エージェントは起動時にtmux変数から自軍情報を取得せよ：
 ```bash
-ARMY_ID=$(tmux display-message -t "$TMUX_PANE" -p '#{@army_id}')       # → armyA or armyB
-ARMY=$(tmux display-message -t "$TMUX_PANE" -p '#{@army_session}')      # → armyA or armyB
-SUFFIX=${ARMY_ID: -1}                                                    # → A or B（agent_id構築用）
+ARMY_ID=$(tmux display-message -t "$TMUX_PANE" -p '#{@army_id}')       # → armyA / armyB / armyC
+ARMY=$(tmux display-message -t "$TMUX_PANE" -p '#{@army_session}')      # → armyA / armyB / armyC
+SUFFIX=${ARMY_ID: -1}                                                    # → A / B / C（agent_id構築用）
 ```
 
 **ペインの動的参照パターン（resolve_pane.sh 使用）**:
@@ -246,9 +238,8 @@ TARGET=$(bash scripts/resolve_pane.sh ashigaruA5) || echo "dead"
 | 大将軍 | `taishogun` |
 | 自軍の将軍 | `shogun${SUFFIX}` |
 | 自軍の家老 | `karo${SUFFIX}` |
-| 自軍の足軽N | `ashigaru${SUFFIX}{N}`（例: ashigaruA3） |
-| 忍頭 | `shinobicho` |
-| 忍N | `shinobi{N}`（忍1=shinobi1, 3=shinobi3） |
+| 自軍の足軽N | `ashigaru${SUFFIX}{N}`（例: ashigaruA3, ashigaruC5） |
+| 他軍の将軍 | `shogunA` / `shogunB` / `shogunC` を直接指定 |
 
 ### イベント駆動通信（YAML + send-keys）
 - ポーリング禁止（API代金節約のため）
@@ -283,11 +274,8 @@ TARGET=$(bash scripts/resolve_pane.sh ashigaruA5) || echo "dead"
 - **足軽→家老**: `queue/${ARMY_ID}/reports/ashigaru{N}_report.yaml` + send-keys `$(bash scripts/resolve_pane.sh karo${SUFFIX})`
 - **家老→将軍**: dashboard更新 + send-keys `$(bash scripts/resolve_pane.sh shogun${SUFFIX})`
 
-**忍衆通信**:
-- **大将軍→忍頭**: `queue/taishogun_to_shinobi.yaml` に記入 + send-keys `shinobi:agents.0`
-- **忍頭→忍**: `queue/shinobi/tasks/shinobi{N}.yaml` に書く + send-keys `shinobi:agents.{N}`
-- **忍→忍頭**: `queue/shinobi/reports/shinobi{N}_report.yaml` に書く + send-keys `shinobi:agents.0`
-- **忍頭→大将軍**: dashboard_shinobi.md更新 + send-keys `taishogun:main`
+> **補足**: 旧忍衆（shinobicho/shinobi1-3 + queue/shinobi/ + dashboard_shinobi.md）は tcmd_233 (2026-04-22) で軍C (shogunC/karoC/ashigaruC1-C8) に統合済み。
+> 軍Cとの通信は軍A/B と完全対称（target_army: armyC）。旧忍衆経路は存在しない。
 
 ### ファイル構成
 ```
@@ -296,34 +284,29 @@ config/armies.yaml                           # 軍団構成定義
 projects/<id>.yaml                           # 各プロジェクトの詳細情報（必要時のみ読む）
 status/master_status.yaml                    # 全体進捗
 
-queue/taishogun_to_shogun.yaml               # 大将軍 → 将軍 指示
-queue/taishogun_to_shinobi.yaml              # 大将軍 → 忍頭 密命
+queue/taishogun_to_shogun.yaml               # 大将軍 → 将軍 指示（target_army で振り分け）
 
 queue/armyA/                                 # 軍A用キュー
   shogun_to_karo.yaml                        # 将軍A → 家老A 指示
   tasks/ashigaru{1-8}.yaml                   # 家老A → 足軽A 割当
   reports/ashigaru{1-8}_report.yaml          # 足軽A → 家老A 報告
   archive/commands.yaml                      # 完了済みコマンド
-  kaizen.yaml                               # 改善候補
+  kaizen.yaml                                # 改善候補
   kaizen_archive.yaml                        # 処理済み改善
 
-queue/armyB/                                 # 軍B用キュー（同構造）
-  （armyAと同じ構造）
-
-queue/shinobi/                               # 忍衆用キュー
-  tasks/shinobi{1-3}.yaml                    # 忍頭 → 忍 割当
-  reports/shinobi{1-3}_report.yaml           # 忍 → 忍頭 報告
-  archive/commands.yaml                      # 完了済み密命
+queue/armyB/                                 # 軍B用キュー（armyAと同構造）
+queue/armyC/                                 # 軍C用キュー（armyAと同構造。tcmd_233 で旧忍衆から統合）
 
 dashboard_armyA.md                           # 軍A用ダッシュボード
 dashboard_armyB.md                           # 軍B用ダッシュボード
-dashboard_shinobi.md                         # 忍衆ダッシュボード
+dashboard_armyC.md                           # 軍C用ダッシュボード
+dashboard_shinobi_archive.md                 # 旧忍衆ダッシュボード（歴史資産、読み取り専用）
 
 instructions/taishogun.md                    # 大将軍指示書
 instructions/shogun.md                       # 将軍指示書
 instructions/karo.md                         # 家老指示書
 instructions/ashigaru.md                     # 足軽指示書
-instructions/sets/                           # instructionsセット（original, coc_trpg, shinobi等）
+instructions/sets/                           # instructionsセット（original, coc_trpg 等。shinobi セットは歴史資産）
 scripts/shutsujin_departure.sh               # 出陣（起動）スクリプト
 scripts/switch_set.sh                        # セット切り替えスクリプト
 ```
@@ -367,19 +350,20 @@ projects/<id>.yaml          # 各プロジェクトの詳細（クライアン�
 - Pane 1 (agents.1): 家老B（@agent_id=karoB）
 - Pane 2-9 (agents.2-9): 足軽B1-B8（@agent_id=ashigaruB1〜ashigaruB8）
 
-### shinobiセッション（4ペイン）
-- Pane 0 (agents.0): 忍頭（@agent_id=shinobicho）
-- Pane 1-3 (agents.1-3): 忍1-3（@agent_id=shinobi1〜shinobi3）
+### armyCセッション（10ペイン・初期配置）
+- Pane 0 (agents.0): 将軍C（@agent_id=shogunC）
+- Pane 1 (agents.1): 家老C（@agent_id=karoC）
+- Pane 2-9 (agents.2-9): 足軽C1-C8（@agent_id=ashigaruC1〜ashigaruC8）
 
-**合計: 25ペイン（1 + 10 + 10 + 4）**
+**合計: 31ペイン（1 + 10 + 10 + 10）**
 
 > **注意**: ペインが死ぬとインデックスが詰まり、上記の初期配置が崩れる。
 > 運用中のペイン参照は必ず `bash scripts/resolve_pane.sh <agent_id>` で動的解決せよ。
 
 ### tmuxペイン変数（shutsujin_departure.shが設定）
 各ペインに以下の変数が設定される：
-- `@agent_id`: エージェントID（例: shogunA, karoB, ashigaruA3）
-- `@army_id`: 所属軍ID（例: armyA, armyB, taishogun）
+- `@agent_id`: エージェントID（例: shogunA, karoB, ashigaruA3, shogunC, ashigaruC5）
+- `@army_id`: 所属軍ID（例: armyA, armyB, armyC, taishogun）
 - `@army_session`: セッション名（army_idと同一）
 - `@model_name`: 使用モデル（例: Opus, Opus Thinking, Sonnet Thinking）
 
@@ -463,7 +447,7 @@ tone と language は独立して設定可能。
 コンパクション用のsummaryを生成する際は、以下を必ず含めよ：
 
 1. **エージェントの役割**: 大将軍/将軍/家老/足軽のいずれか
-2. **所属軍**: armyA/armyB/taishogun
+2. **所属軍**: armyA/armyB/armyC/taishogun
 3. **主要な禁止事項**: そのエージェントの禁止事項リスト
 4. **現在のタスクID**: 作業中のcmd_xxx / tcmd_xxx
 
@@ -485,9 +469,9 @@ MCPツールは遅延ロード方式。使用前に必ず `ToolSearch` で検索
 
 以下は大将軍が**絶対に守るべきルール**である。
 
-### 1. 両軍のダッシュボード確認
-- dashboard_armyA.md と dashboard_armyB.md の両方を確認
-- 殿への報告は両軍の状況を統合して行う
+### 1. 3軍のダッシュボード確認
+- dashboard_armyA.md / dashboard_armyB.md / dashboard_armyC.md の3つを確認
+- 殿への報告は3軍の状況を統合して行う
 
 ### 2. プロジェクト→軍の割り当て
 - config/projects.yaml の `assigned_army` でプロジェクトの所属軍を管理

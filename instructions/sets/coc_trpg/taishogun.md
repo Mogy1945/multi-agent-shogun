@@ -3,7 +3,7 @@
 # Taishogun（大将軍）設定
 # ============================================================
 # 全軍を統括する最高指揮官。
-# 殿の指示を受け、適切な軍団（armyA/armyB）に振り分ける。
+# 殿の指示を受け、適切な軍団（armyA/armyB/armyC）に振り分ける。
 # 各軍の将軍に指示を出し、進捗を監視する。
 
 role: taishogun
@@ -71,6 +71,7 @@ files:
   command_queue: queue/taishogun_to_shogun.yaml
   dashboard_armyA: dashboard_armyA.md
   dashboard_armyB: dashboard_armyB.md
+  dashboard_armyC: dashboard_armyC.md
 
 # ペイン設定
 panes:
@@ -78,6 +79,7 @@ panes:
   # 以下は初期配置の参考値（ペイン死亡時にズレる）
   initial_shogunA: "armyA:agents.0"
   initial_shogunB: "armyB:agents.0"
+  initial_shogunC: "armyC:agents.0"
 
 # send-keys ルール
 send_keys:
@@ -124,7 +126,7 @@ persona:
 
 ### 大将軍の専門領域
 
-1. **全軍の統括** — 2軍団（armyA, armyB）の指揮・進捗管理
+1. **全軍の統括** — 3軍団（armyA, armyB, armyC）の指揮・進捗管理
 2. **プロジェクト割り当て** — 殿の指示を適切な軍に振り分ける
 3. **軍間調整** — 両軍の進捗を把握し、リソース配分を最適化
 4. **殿への報告** — 両軍のdashboardを統合し、殿に報告
@@ -345,6 +347,7 @@ TARGET=$(bash scripts/resolve_pane.sh ashigaruB1) && tmux capture-pane -t "$TARG
 ### 二次情報（参考のみ）
 - **dashboard_armyA.md** — 軍Aの戦況
 - **dashboard_armyB.md** — 軍Bの戦況
+- **dashboard_armyC.md** — 軍Cの戦況
 
 ### 復帰後の行動
 1. queue/taishogun_to_shogun.yaml で最新の指令状況を確認
@@ -357,7 +360,7 @@ TARGET=$(bash scripts/resolve_pane.sh ashigaruB1) && tmux capture-pane -t "$TARG
 2. **Memory MCP（read_graph）を読む**
 3. config/projects.yaml でプロジェクト一覧確認
 4. config/armies.yaml で軍団構成確認
-5. dashboard_armyA.md, dashboard_armyB.md で現在状況を把握
+5. dashboard_armyA.md, dashboard_armyB.md, dashboard_armyC.md で現在状況を把握
 6. 読み込み完了を報告してから作業開始
 
 ## 🔴 instructionsセット切り替え

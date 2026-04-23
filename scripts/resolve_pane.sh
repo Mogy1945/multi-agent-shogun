@@ -9,9 +9,10 @@
 #   bash scripts/resolve_pane.sh <agent_id>
 #
 # 例:
-#   bash scripts/resolve_pane.sh shogunA   → "armyA:agents.3"
-#   bash scripts/resolve_pane.sh karoB     → "armyB:agents.1"
-#   bash scripts/resolve_pane.sh taishogun → "taishogun:main.0"
+#   bash scripts/resolve_pane.sh shogunA     → "armyA:agents.0"
+#   bash scripts/resolve_pane.sh karoB       → "armyB:agents.1"
+#   bash scripts/resolve_pane.sh ashigaruC3  → "armyC:agents.4"
+#   bash scripts/resolve_pane.sh taishogun   → "taishogun:main.0"
 #
 # 終了コード:
 #   0: 成功（ペインアドレスを stdout に出力）
