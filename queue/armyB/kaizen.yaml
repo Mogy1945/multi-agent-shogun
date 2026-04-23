@@ -641,3 +641,65 @@ entries:
     proposed_fix: "wait戦略を『固定ID/要素の出現を browser_evaluate で直接判定』デフォルト化。wait_for_textは事前grep済のユーザー可視テキスト（ボタンラベル等）に限定運用。templates/ashigaru_subagent_prompt.md または Playwrightスキルに運用ルール追記"
     status: adopted
     action: "cmd_B020棚卸し (2026-04-19): skills/playwright-local-html-preview/SKILL.md §Guidelines / Failure Modes §Playwright MCP 固有の注意 に『browser_navigate 後、レンダリング完了を確認したいときは browser_wait_for ではなく browser_evaluate で DOM 条件を直接判定する方が安全（KZ-134 参照）』として既記載。本エントリは『wait戦略: browser_evaluate デフォルト化 + wait_for_text は事前grep済テキストに限定』のルールがスキル側で運用ルール化されたことを以て adopted とする。"
+  - id: KZ-161
+    timestamp: "2026-04-23T01:50:00"
+    reporter: karoB
+    category: code
+    priority: medium
+    description: "tcmd_253 監査で MA-002/003/005 + MJ-001/002 (race/listener/cross-battle 状態漏洩) を複数 JS モジュール (modal.js/render.js/gacha.js/turn.js) で修正した際、module-level guard flag + requestId/isStillCurrent late-resolve pattern を繰り返し実装した。共通パターンを utils/race-guard.js 等に抽出し再利用可能にすべし。"
+    impact: "(1) 同様 race bug の再発リスク (2) 各モジュールで微妙に異なる guard 実装が散らばり保守性低下 (3) 新規モジュール実装時に guard 忘れの事故余地"
+    proposed_fix: "(1) battle/assets/js/utils/race-guard.js (仮) に createGuard(name) / createRequestCounter(name) を提供 (2) どの場面 (async modal / click listener / cross-battle state) で使うべきかドキュメント化 (3) 次回大型監査用チェックリスト化 (async 操作の前後に guard 有無確認項目を入れる) (4) 既存の _isStartingBattle / _rankingRequestCounter / currentReplaceQueue も順次 util 経由にリファクタ"
+    status: open
+    action: "tcmd_253 audit.md §7-1 起案。殿起床後に実装着手要否判断を仰ぐ"
+  - id: KZ-162
+    timestamp: "2026-04-23T01:50:00"
+    reporter: karoB
+    category: process
+    priority: medium
+    description: "tcmd_253 で B1-B8 SubAgent 並列監査 (ashigaru pane 消失により Agent tool fallback) を実行した際、境界領域の重複カバーと漏れの両方が観測された。特に MJ-004 (performPlayerTurn paralyze gate 欠落) は Wave 1-2 の静的/動的監査では検出されず、Wave 3 karoB 統合時の対称性走査で初めて発見された。"
+    impact: "(1) 境界領域 (同一ファイル内の対称性 / 隣接モジュール間の契約 / state 遷移の往復) が監査漏れしやすい (2) SubAgent の担当範囲が overlapping/gap どちらに振れても品質低下 (3) Wave 3 手動走査に依存すると scale しない"
+    proposed_fix: "(1) 監査開始時に境界領域マップを作成: どの SubAgent がどのファイル/モジュール/機能を持つかマトリクス化 (2) 境界 (例: turn.js performPlayerTurn vs performEnemyTurn の対称性 / state.playerStatus vs state.enemyStatus の対称性 / gachaTableData literal vs TARGET enum) は複数 SubAgent で cross-verify 必須化 (3) 結果統合は karoB が行い、境界漏れ検出時は Wave 3 再検証を組込む (4) templates/ashigaru_subagent_prompt.md に『境界領域の cross-verify 指針』セクション追加"
+    status: open
+    action: "tcmd_253 audit.md §7-2 起案・§8 Wave coverage map で MJ-004 発見経路を記録済。殿起床後に templates/ 改修着手要否判断を仰ぐ"
+
+  - id: KZ-163
+    title: "dead-css-class-activation-pattern (JS付与 dead class を体系活性化するスキル候補)"
+    type: skill_candidate
+    status: open
+    priority: medium
+    reporter: ashigaruB2
+    origin: "cmd_B042 / tcmd_258 / PR #53 (camp-schedule-app merge dd34575)"
+    summary: "JS 側が付与するが CSS 定義が欠落している dead class を、recon→色パレット厳選 (デザイントークン内4色以内)→`.parent p.log-X` 特異度統一→重要行のみ font-size 昇格→擬似 `<style>` 注入検証、の一連パイプラインで活性化するスキル候補"
+    detail: |
+      背景: tcmd_258 では battle log 17 class のうち 16 種が dead (CSS 未定義) と判明、CSS 単体 +74 行で JS 0バイトのまま可読性改善を達成した。
+      汎用化価値: toast / chip / status indicator / table row / notification 等、『JS が付与するが CSS が未定義』なパターンは他プロジェクトにも存在。recon→色数厳選→特異度統一→擬似注入検証のパイプラインはテンプレ化価値あり。
+      ワークフロー:
+        (1) grep で JS 付与 class 名と CSS セレクタ定義を突合し dead class を列挙
+        (2) 既存デザイントークン (CSS 変数) 内で 4 色以内に収束する color 割当を設計
+        (3) セレクタは `.parent p.target` 等で特異度統一、他 UI への波及を防止
+        (4) font-size は重要カテゴリのみ段階的昇格 (例 8→11px)、非重要は色差のみで識別
+        (5) animation/transition は追加しない (テンポ保持)
+        (6) Playwright MCP `<style>` 注入で擬似 After → getComputedStyle で実効値確定
+      成果物想定: skills/dead-css-class-activation-pattern/SKILL.md
+      出典: reports/tcmd_258/recon.md §3.2 / §7 / §8.3, PR #53
+    action: "将軍B棚卸しマターとして accept (skills/ 起案) / reject (skill 化せず本件限り) / defer (複数回発生後に再評価) のいずれかを仰ぐ"
+    created: "2026-04-24"
+
+  - id: KZ-164
+    title: "Playwright MCP take_screenshot filename は `.playwright-mcp/` prefix 必須 (ENOENT 回避)"
+    type: tool-usage-pitfall
+    status: open
+    priority: low
+    reporter: ashigaruB2
+    origin: "cmd_B042 / tcmd_258 Phase 2 検証中"
+    summary: "Playwright MCP take_screenshot の filename は `.playwright-mcp/<subdir>/<name>.png` 形式でないと ENOENT エラーになる。相対 `<subdir>/<name>.png` や絶対パスは失敗する"
+    detail: |
+      観測: tcmd_258 Phase 2 検証で後者形式を最初に試し、ENOENT で 1 回失敗 → prefix 追加で 2 回目に成功。
+      系統: KZ-144 (R.2 Playwright MCP 既知制約 — waitUntil 'domcontentloaded' 固定) と同じ Playwright MCP 固有制約。
+      影響: 初見の足軽は 1-2 分の手戻り。recon / 実装 / 検証タスクで個別に踏む可能性。
+      横展開候補:
+        (1) instructions/karo.md §R.2 (Playwright MCP 既知制約表) に『take_screenshot filename は .playwright-mcp/ prefix 必須』行を追加
+        (2) templates/ashigaru_subagent_prompt.md の Playwright MCP 注意書きに追記
+        (3) instructions/base.md の Tools ノート (該当セクションがあれば) に追記
+    action: "将軍B棚卸しマターとして karo.md R.2 追記 or base.md/templates 追記の採否判断を仰ぐ"
+    created: "2026-04-24"
