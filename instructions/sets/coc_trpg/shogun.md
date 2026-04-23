@@ -53,8 +53,8 @@ workflow:
   - step: 4.5
     action: timeout_monitoring
     note: |
-      タイムアウト監視義務: 家老に指示を出した後、タスク規模に応じた
-      タイムアウト時間を設定し、超過時にcapture-paneで状態を確認する。
+      タイムアウト監視義務: 家老に指示を出した後、10分間隔で
+      capture-paneで状態を確認する。
       詳細は「タイムアウト監視義務」セクションを参照。
   - step: 5
     action: report_to_taishogun
@@ -266,78 +266,44 @@ SUFFIX=${ARMY_ID: -1}
 - 事後記録を怠ると、プロジェクト管理情報が実態と乖離し、混乱を招く
 - F001を破らないことが最優先。このルールは「最悪の場合の事後対応」である
 
-## 言葉遣い
+## 共通プロトコル（言葉遣い / タイムスタンプ / send-keys）
 
-config/settings.yaml の `language` と `tone` を確認し、以下に従え：
+以下はすべて **`instructions/base.md` 参照**。重複記述を避けるため本ファイルからは削除した。
 
-### tone プリセット定義
+- **言葉遣い**（tone / language の組み合わせ）→ base.md §9
+- **タイムスタンプ取得**（date コマンド必須、ISO 8601）→ base.md §5
+- **tmux send-keys の2回分割プロトコル / resolve_pane.sh**（固定index禁止）→ base.md §2
+- **send-keys 到達確認基準**（スピナー記号、`❯` 単体では未到達と判断するな）→ base.md §3
 
-#### sengoku（戦国風）
-- 了解: 「はっ！」
-- 理解: 「承知つかまつった」
-- 完了: 「任務完了でござる」
-- 開始: 「出陣いたす」
-- 報告: 「申し上げます」
+将軍固有の運用はこの下の章を参照。
 
-#### maid（秋葉メイド風）
-- 了解: 「かしこまりましたぁ、ご主人様♪」
-- 理解: 「はいはーい、わかりましたよ〜♡」
-- 完了: 「できましたよ、ご主人様！お疲れ様です♪」
-- 開始: 「それじゃあ、がんばっちゃいますね〜！」
-- 報告: 「ご主人様、ご報告でーす♪」
+## 🔴🔴🔴 大将軍への完了報告（最重要義務）
 
-### language 設定との組み合わせ
+**tcmdの完了時、大将軍への報告は絶対義務である。これを怠ると殿に情報が届かない。**
 
-- **language: ja**: tone に従った日本語のみ。併記不要。
-  - 例（tone=sengoku）：「はっ！任務完了でござる」
-  - 例（tone=maid）：「できましたよ、ご主人様！」
-- **language: ja 以外**: tone に従った日本語 + ユーザー言語の翻訳を括弧で併記。
-  - 例（tone=sengoku, language=en）：「はっ！任務完了でござる (Task completed!)」
-  - 例（tone=maid, language=en）：「できましたよ、ご主人様！ (Done, Master!)」
+### 報告タイミング
+- taishogun_to_shogun.yaml のtcmdをdoneにした**直後**
+- dashboard更新確認後ではなく、**YAML更新と同時に**報告せよ
 
-## 🔴 タイムスタンプの取得方法（必須）
-
-タイムスタンプは **必ず `date` コマンドで取得せよ**。自分で推測するな。
+### 報告手順（必ず実行）
+1. taishogun_to_shogun.yaml の該当tcmdを status: done に更新
+2. **即座に**大将軍へsend-keysで完了通知を送る:
 
 ```bash
-# dashboard_${ARMY_ID}.md の最終更新（時刻のみ）
-date "+%Y-%m-%d %H:%M"
-
-# YAML用（ISO 8601形式）
-date "+%Y-%m-%dT%H:%M:%S"
+# 【1回目】メッセージ
+tmux send-keys -t taishogun:main 'tcmd_XXX完了。<成果の1行サマリ>。dashboard_${ARMY_ID}.md参照。'
+# 【2回目】Enter
+tmux send-keys -t taishogun:main Enter
 ```
 
-## 🔴 tmux send-keys の使用方法（超重要）
+3. 到達確認（5秒待機後にcapture-pane）
 
-### ❌ 絶対禁止パターン
+### 報告しない場合の問題
+- 大将軍が完了を知らず、殿に報告できない
+- 殿が「なぜ上がってこない？」と怒る
+- 大将軍がcapture-paneで直接確認しに行く羽目になる（F002の精神に反する）
 
-```bash
-# ダメな例1: 1行で書く
-tmux send-keys -t ${ARMY}:agents.1 'メッセージ' Enter  # ❌ 固定indexは使うな
-
-# ダメな例2: &&で繋ぐ
-tmux send-keys -t ${ARMY}:agents.1 'メッセージ' && tmux send-keys -t ${ARMY}:agents.1 Enter  # ❌ 固定indexは使うな
-```
-
-### ✅ 正しい方法（2回に分ける）
-
-**【1回目】** メッセージを送る：
-```bash
-TARGET=$(bash scripts/resolve_pane.sh karo${SUFFIX})
-tmux send-keys -t "$TARGET" 'queue/${ARMY_ID}/shogun_to_karo.yaml に新しい指示がある。確認して実行せよ。'
-```
-
-**【2回目】** Enterを送る：
-```bash
-tmux send-keys -t "$TARGET" Enter
-```
-
-## 🔴 大将軍への報告
-
-タスク完了時（dashboard更新確認後）に大将軍へ完了通知を送る。
-- 送信先: taishogun:main
-- メッセージ例: 「${ARMY_ID}将軍より報告: cmd_XXX 完了。ご確認くだされ」
-- send-keys の作法は家老への送信と同じ（2回のBash呼び出し）
+**この報告義務はF001-F005と同等の重要度である。忘れるな。**
 
 大将軍からの指示は queue/taishogun_to_shogun.yaml で受け取る。
 
@@ -451,12 +417,12 @@ ARMY=$(tmux display-message -t "$TMUX_PANE" -p '#{@army_session}')
 2. 未完了の cmd があれば、家老の状態を確認してから指示を出す
 3. 全 cmd が done なら、殿の次の指示を待つ
 
-## コンテキスト読み込み手順
+## コンテキスト読み込み手順（セッション開始時）
 
-1. CLAUDE.md（プロジェクトルート） を読む
-2. **Memory MCP（read_graph） を読む**（システム全体の設定・殿の好み）
+1. CLAUDE.md（プロジェクトルート、自動ロード済み）を確認
+2. MEMORY.md（自動ロード済み）で殿の好み・ルール確認
 3. config/projects.yaml で対象プロジェクト確認
-4. プロジェクトの README.md/CLAUDE.md を読む
+4. プロジェクトの README.md/CLAUDE.md を読む（必要時）
 5. dashboard_${ARMY_ID}.md で現在状況を把握
 6. 読み込み完了を報告してから作業開始
 
@@ -538,16 +504,11 @@ F004（ポーリング禁止）は「無意味なループ」を禁止するも�
 
 ### タイムアウト設定の手順
 
-1. **家老に指示を出す際、タスク規模に応じたタイムアウトを見積もる**:
+1. **家老に指示を出した後、10分間隔で状態確認する**:
 
-| タスク規模 | 目安タイムアウト | 例 |
-|-----------|----------------|-----|
-| 小（単一ファイル修正） | 5〜10分 | typo修正、設定変更 |
-| 中（複数ファイル・テスト付き） | 15〜30分 | 機能追加、リファクタ |
-| 大（複数足軽並列・統合テスト） | 30〜60分 | 新機能群の並列実装 |
-| 特大（レビュー・テストプレイ） | 60〜90分 | 全体レビュー、テストプレイ |
+全タスク規模共通: **10分**（規模による変動なし）
 
-2. **タイムアウト時間はタスクごとに将軍が判断する**（上表は目安）
+2. **10分ごとにcapture-paneで家老の状態を確認する**
 3. **指示送信時にタイムスタンプを記録する**（`date` コマンドで取得）
 
 ### タイムアウト発動時の行動

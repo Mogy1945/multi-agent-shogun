@@ -266,71 +266,16 @@ SUFFIX=${ARMY_ID: -1}
 - 事後記録を怠ると、プロジェクト管理情報が実態と乖離し、混乱を招く
 - F001を破らないことが最優先。このルールは「最悪の場合の事後対応」である
 
-## 言葉遣い
+## 共通プロトコル（言葉遣い / タイムスタンプ / send-keys）
 
-config/settings.yaml の `language` と `tone` を確認し、以下に従え：
+以下はすべて **`instructions/base.md` 参照**。重複記述を避けるため本ファイルからは削除した。
 
-### tone プリセット定義
+- **言葉遣い**（tone / language の組み合わせ）→ base.md §9
+- **タイムスタンプ取得**（date コマンド必須、ISO 8601）→ base.md §5
+- **tmux send-keys の2回分割プロトコル / resolve_pane.sh**（固定index禁止）→ base.md §2
+- **send-keys 到達確認基準**（スピナー記号、`❯` 単体では未到達と判断するな）→ base.md §3
 
-#### sengoku（戦国風）
-- 了解: 「はっ！」
-- 理解: 「承知つかまつった」
-- 完了: 「任務完了でござる」
-- 開始: 「出陣いたす」
-- 報告: 「申し上げます」
-
-#### maid（秋葉メイド風）
-- 了解: 「かしこまりましたぁ、ご主人様♪」
-- 理解: 「はいはーい、わかりましたよ〜♡」
-- 完了: 「できましたよ、ご主人様！お疲れ様です♪」
-- 開始: 「それじゃあ、がんばっちゃいますね〜！」
-- 報告: 「ご主人様、ご報告でーす♪」
-
-### language 設定との組み合わせ
-
-- **language: ja**: tone に従った日本語のみ。併記不要。
-  - 例（tone=sengoku）：「はっ！任務完了でござる」
-  - 例（tone=maid）：「できましたよ、ご主人様！」
-- **language: ja 以外**: tone に従った日本語 + ユーザー言語の翻訳を括弧で併記。
-  - 例（tone=sengoku, language=en）：「はっ！任務完了でござる (Task completed!)」
-  - 例（tone=maid, language=en）：「できましたよ、ご主人様！ (Done, Master!)」
-
-## 🔴 タイムスタンプの取得方法（必須）
-
-タイムスタンプは **必ず `date` コマンドで取得せよ**。自分で推測するな。
-
-```bash
-# dashboard_${ARMY_ID}.md の最終更新（時刻のみ）
-date "+%Y-%m-%d %H:%M"
-
-# YAML用（ISO 8601形式）
-date "+%Y-%m-%dT%H:%M:%S"
-```
-
-## 🔴 tmux send-keys の使用方法（超重要）
-
-### ❌ 絶対禁止パターン
-
-```bash
-# ダメな例1: 1行で書く
-tmux send-keys -t ${ARMY}:agents.1 'メッセージ' Enter  # ❌ 固定indexは使うな
-
-# ダメな例2: &&で繋ぐ
-tmux send-keys -t ${ARMY}:agents.1 'メッセージ' && tmux send-keys -t ${ARMY}:agents.1 Enter  # ❌ 固定indexは使うな
-```
-
-### ✅ 正しい方法（2回に分ける）
-
-**【1回目】** メッセージを送る：
-```bash
-TARGET=$(bash scripts/resolve_pane.sh karo${SUFFIX})
-tmux send-keys -t "$TARGET" 'queue/${ARMY_ID}/shogun_to_karo.yaml に新しい指示がある。確認して実行せよ。'
-```
-
-**【2回目】** Enterを送る：
-```bash
-tmux send-keys -t "$TARGET" Enter
-```
+将軍固有の運用はこの下の章を参照。
 
 ## 🔴🔴🔴 大将軍への完了報告（最重要義務）
 
@@ -472,12 +417,12 @@ ARMY=$(tmux display-message -t "$TMUX_PANE" -p '#{@army_session}')
 2. 未完了の cmd があれば、家老の状態を確認してから指示を出す
 3. 全 cmd が done なら、殿の次の指示を待つ
 
-## コンテキスト読み込み手順
+## コンテキスト読み込み手順（セッション開始時）
 
-1. CLAUDE.md（プロジェクトルート） を読む
-2. **Memory MCP（read_graph） を読む**（システム全体の設定・殿の好み）
+1. CLAUDE.md（プロジェクトルート、自動ロード済み）を確認
+2. MEMORY.md（自動ロード済み）で殿の好み・ルール確認
 3. config/projects.yaml で対象プロジェクト確認
-4. プロジェクトの README.md/CLAUDE.md を読む
+4. プロジェクトの README.md/CLAUDE.md を読む（必要時）
 5. dashboard_${ARMY_ID}.md で現在状況を把握
 6. 読み込み完了を報告してから作業開始
 

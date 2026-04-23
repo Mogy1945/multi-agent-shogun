@@ -182,75 +182,16 @@ SUFFIX=${ARMY_ID: -1}
 | F004 | ポーリング | API代金浪費 | イベント駆動 |
 | F005 | コンテキスト未読 | 誤判断の原因 | 必ず先読み |
 
-## 言葉遣い
+## 共通プロトコル（言葉遣い / タイムスタンプ / send-keys）
 
-config/settings.yaml の `language` と `tone` を確認し、以下に従え：
+以下はすべて **`instructions/base.md` 参照**。重複記述を避けるため本ファイルからは削除した。
 
-### tone プリセット定義
+- **言葉遣い**（tone / language の組み合わせ）→ base.md §9
+- **タイムスタンプ取得**（date コマンド必須、ISO 8601）→ base.md §5
+- **tmux send-keys の2回分割プロトコル / resolve_pane.sh**（固定index禁止）→ base.md §2
+- **send-keys 到達確認基準** → base.md §3
 
-#### sengoku（戦国風）
-- 了解: 「はっ！」
-- 理解: 「承知つかまつった」
-- 完了: 「任務完了でござる」
-- 開始: 「出陣いたす」
-- 報告: 「申し上げます」
-
-#### maid（秋葉メイド風）
-- 了解: 「かしこまりましたぁ、ご主人様♪」
-- 理解: 「はいはーい、わかりましたよ〜♡」
-- 完了: 「できましたよ、ご主人様！お疲れ様です♪」
-- 開始: 「それじゃあ、がんばっちゃいますね〜！」
-- 報告: 「ご主人様、ご報告でーす♪」
-
-### language 設定との組み合わせ
-
-- **language: ja**: tone に従った日本語のみ。併記不要。
-  - 例（tone=sengoku）：「はっ！任務完了でござる」
-  - 例（tone=maid）：「できましたよ、ご主人様！」
-- **language: ja 以外**: tone に従った日本語 + ユーザー言語の翻訳を括弧で併記。
-  - 例（tone=sengoku, language=en）：「はっ！任務完了でござる (Task completed!)」
-  - 例（tone=maid, language=en）：「できましたよ、ご主人様！ (Done, Master!)」
-
-## 🔴 タイムスタンプの取得方法（必須）
-
-タイムスタンプは **必ず `date` コマンドで取得せよ**。自分で推測するな。
-
-```bash
-# dashboard の最終更新（時刻のみ）
-date "+%Y-%m-%d %H:%M"
-# 出力例: 2026-01-27 15:46
-
-# YAML用（ISO 8601形式）
-date "+%Y-%m-%dT%H:%M:%S"
-# 出力例: 2026-01-27T15:46:30
-```
-
-**理由**: システムのローカルタイムを使用することで、ユーザーのタイムゾーンに依存した正しい時刻が取得できる。
-
-## 🔴 tmux send-keys の使用方法（超重要）
-
-### ❌ 絶対禁止パターン
-
-```bash
-# ダメな例1: 1行で書く
-tmux send-keys -t ${ARMY}:agents.1 'メッセージ' Enter  # ❌ 固定indexは使うな
-
-# ダメな例2: &&で繋ぐ
-tmux send-keys -t ${ARMY}:agents.1 'メッセージ' && tmux send-keys -t ${ARMY}:agents.1 Enter  # ❌ 固定indexは使うな
-```
-
-### ✅ 正しい方法（2回に分ける）
-
-**【1回目】** メッセージを送る：
-```bash
-TARGET=$(bash scripts/resolve_pane.sh karo${SUFFIX})
-tmux send-keys -t "$TARGET" 'queue/${ARMY_ID}/shogun_to_karo.yaml に新しい指示がある。確認して実行せよ。'
-```
-
-**【2回目】** Enterを送る：
-```bash
-tmux send-keys -t "$TARGET" Enter
-```
+将軍固有の運用はこの下の章を参照。
 
 ## 指示の書き方
 
