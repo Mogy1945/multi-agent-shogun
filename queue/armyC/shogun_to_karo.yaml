@@ -1,0 +1,1621 @@
+queue:
+  - id: cmd_001
+    parent_tcmd: tcmd_260
+    timestamp: '2026-04-24T23:28:47+09:00'
+    project: multi_agent_shogun_meta
+    priority: low
+    status: completed
+    completed_at: '2026-04-24T23:31:00+09:00'
+    command: |
+      【dashboard_armyC.md 要対応セクション クリーンアップ】
+
+      **作業内容**:
+      1. dashboard_armyC.md L7-10 の「🚨 要対応」2件（小説『僕が消える前に』殿レビュー待ち /
+         #7正統王室軍 dev_copy 書き込み待ち）を削除
+      2. 代わりに以下に置換:
+         ```
+         ## 🚨 要対応
+
+         （現在なし。過去の要対応はアーカイブ済み、歴史は dashboard_shinobi_archive.md 参照）
+         ```
+      3. 「🔄 自律改善ログ（最新5件）」テーブルに1行追加:
+         - 日付: 2026-04-24
+         - ID: IMP-006（既存IMP-005の次番）
+         - 実行者: 家老C（または担当足軽）
+         - 対象: dashboard_armyC.md
+         - 種別: dashboard整理
+         - 結果: PASS
+         - note（可能なら列拡張せず別行サマリで可）: 旧忍衆時代(2026-04-06)のアーカイブ重複記載を削除。
+           証跡=dashboard_shinobi_archive.md L9/L66。戻し方=git revert 該当コミット。
+
+      **背景**:
+      - 2026-04-24 殿との対話で、dashboard_armyC.md L7-10 の要対応2件が、
+        実は 2026-04-06 時点の旧忍衆時代アーカイブ内容の重複記載であり、
+        現時点では殿判断を要する事項ではないことが判明
+      - dashboard_shinobi_archive.md に既に正しくアーカイブ済
+      - 現ディレクトリに該当成果物（reports/novel_boku_ga_kieru_mae_ni.md）は存在せず、
+        /tmp/royal_*.txt も既に消失
+
+      **家老C裁量**:
+      - 足軽1人でOK（軽微なdashboard編集のみ、SubAgent 1体で完結）
+      - コミットは家老C判断（将軍Cはコミット要否を指定しない）
+
+      **完了報告**:
+      - dashboard_armyC.md 更新
+      - queue/armyC/reports/ashigaru{N}_report.yaml に結果記入
+      - dashboard の「要対応」と「自律改善ログ」を将軍Cが確認できる状態に
+      - 家老Cから将軍Cへ send-keys で完了通知
+
+      **親tcmd**: tcmd_260（大将軍→将軍C、自律判断発令）
+
+  - id: cmd_002
+    parent_tcmd: tcmd_262
+    timestamp: '2026-04-26T22:24:22+09:00'
+    project: multi_agent_shogun_meta
+    priority: high
+    status: completed
+    completed_at: '2026-04-26T22:38:00+09:00'
+    deliverable: reports/tcmd_262/report.md
+    recommendation: "HauhauCS/Qwen3.6-27B-Uncensored-HauhauCS-Aggressive IQ3_M (13GB) / llama.cpp + CUDA 12.8 / 🟡動作可 50-60 tok/s"
+    command: |
+      【Qwen3.6-27B 未検閲版（abliterated）の調査+本PC稼働可否判定】
+
+      **殿の依頼（原文・将軍Cでの利用想定）**:
+      「Qwen3.6-27Bの未検閲版を探している。将軍Cで未検閲版として使いたい。
+        調査して、それがこのPCで使えるか調べてほしい」
+
+      **🔴 絶対禁止事項（厳守）**:
+      - 実際のモデルダウンロード禁止（27B FP16 ~54GB、Q4でも ~16GB）
+      - 実行・推論試行禁止
+      - 殿の他プロジェクトファイル書込み禁止
+      - 大容量ファイルDL試行禁止
+      → 全Phaseとも「調査と判定」のみ。最終的な実行は殿GO待ち。
+
+      **作業構成（4Phase、足軽C1-C4を並列起動）**:
+
+      ## Phase 1: 候補モデル詳細精査（足軽C1-C3 並列）
+
+      - **足軽C1**: huihui-ai/Huihui-Qwen3.6-27B-abliterated（HF）精査
+        * モデルカード本文・ライセンス・ファイル構成
+        * 量子化派生（GGUF/AWQ等）の有無、配布元
+        * 公開日・ダウンロード数・コミュニティ評価
+        * vision 機能保持の有無
+        * 既知の劣化レポート（品質ベンチ低下、ハルシネ増加等）
+        * 出力先: reports/tcmd_262/c1_huihui.md
+
+      - **足軽C2**: Youssofal/Qwen3.6-27B-Abliterated-Heretic-Uncensored-GGUF 精査
+        * 上記C1と同項目 +
+        * GGUF 量子化レベル別ファイルサイズ（Q2/Q4_K_M/Q5/Q6/Q8）
+        * Heretic 手法の説明、abliteration単独との差異
+        * llama.cpp / Ollama での動作実績
+        * 出力先: reports/tcmd_262/c2_youssofal.md
+
+      - **足軽C3**: 第3候補探索
+        * Hugging Face を "qwen3.6 27b uncensored OR abliterated" で検索
+        * 上2つ以外で品質定評・最近更新の候補を3〜5件リスト化
+        * mradermacher / bartowski 等の信頼できる quantizer 派生を優先
+        * 出力先: reports/tcmd_262/c3_alternatives.md
+
+      ## Phase 2: 本PCスペック取得（足軽C4 単独）
+
+      - **足軽C4**: 以下コマンドを実行し reports/tcmd_262/system_specs.md にまとめる
+        ```
+        lscpu | head -30
+        free -h
+        nvidia-smi 2>/dev/null || echo "no nvidia GPU"
+        nvidia-smi -q -d MEMORY 2>/dev/null | head -20
+        df -h /home/shuirein928
+        uname -a; cat /etc/os-release 2>/dev/null
+        which ollama llama-server llama-cli vllm 2>/dev/null
+        ollama list 2>/dev/null
+        grep -i microsoft /proc/version 2>/dev/null
+        ```
+      - WSL2環境（Linux 6.6.87.2-microsoft-standard-WSL2）から Windows側 GPU/RAM を
+        どこまで使えるかの考察も含める（WSLg / CUDA on WSL2 の現状）
+
+      ## Phase 3: 稼働可否判定（家老C 統合）
+
+      - 27B モデルを各量子化で動かす場合の必要 VRAM/RAM 概算
+        （Q4_K_M / Q5_K_M / Q6_K / Q8_0 / FP8 / FP16）
+      - 本PCスペックと突合、4分類で判定:
+        * ✅ 快適: GPU 全レイヤオフロード可、20+ tok/s 期待
+        * 🟡 動作可: 部分オフロード or CPU推論、5-15 tok/s
+        * 🟠 厳しい: 量子化を最低まで落として 1-5 tok/s、実用ギリ
+        * ❌ 不可: スワップ多発 or OOM
+      - 推奨ランナー（Ollama / llama.cpp / LM Studio / vLLM 等）と起動コマンド例
+      - 「将軍Cの推論バックエンド」として組み込む場合の課題列挙
+        （Claude Code との切替、API互換、レイテンシ、起動オーバーヘッド等）
+
+      ## Phase 4: 殿への提案（家老C → 将軍C → 大将軍 → 殿）
+
+      - 推奨候補1つに絞る（理由付き：稼働ランク・品質・更新性・ライセンス総合）
+      - ダウンロード手順（コマンド例、必要時間目安、ディスク使用量）
+      - 起動例（最小構成で動作確認するコマンド）
+      - リスク（ライセンス、品質、更新追従、未検閲ゆえの責任範囲）
+
+      **家老C裁量**:
+      - 足軽C1〜C4 を Phase1+2 で並列起動推奨（時間短縮）
+      - Phase3〜4 は家老C統合作業（足軽不要 or 1名で清書）
+      - 各足軽 SubAgent モデル選定は家老C判断（Sonnet が妥当と思料）
+      - WebFetch / WebSearch / mcp__notion 等のツール使用OK
+      - mkdir -p reports/tcmd_262/ 必要
+
+      **完了報告**:
+      - reports/tcmd_262/report.md（候補3件比較表 + システムスペック + 稼働可否判定 + 推奨1件）
+      - reports/tcmd_262/{c1_huihui.md, c2_youssofal.md, c3_alternatives.md, system_specs.md}（中間成果）
+      - queue/armyC/reports/ashigaru{N}_report.yaml に各足軽の結果記入
+      - 家老Cから将軍Cへ send-keys で完了通知（推奨モデル名+稼働ランクを1行で）
+
+      **親tcmd**: tcmd_262（大将軍→将軍C、殿要望、高優先）
+
+  - id: cmd_005
+    parent_tcmd: tcmd_264
+    note: "tcmd_264 Phase 5 step 13 残課題の後追い起票。家老C手隙時実行。"
+    timestamp: '2026-04-27T17:30:00+09:00'
+    project: local_llm_uncensored
+    priority: low
+    status: pending
+    command: |
+      【tcmd_264 Phase 5 step 13 — 起動・停止スクリプトの運用化整備】
+
+      **背景**:
+      - tcmd_264 完遂時、Phase 5 step 13 の start_local_llm.sh / stop_local_llm.sh は
+        ashigaruC5 が暫定整備したが、起動オプションの運用ノウハウが未集約だった
+      - 大将軍が再起動でハマった経緯あり（殿の指摘）。運用スクリプト化が必須
+
+      **必須要件（殿指摘）**:
+      1. **--reasoning off** 必須
+         - llama-server 起動オプションに付与しないと thinking ブロック垂れ流し
+         - tcmd_264 検証時は `/no_think` プレフィックスで抑制したが、永続化のためサーバ側で off
+      2. **LD_LIBRARY_PATH 必須**
+         - Ollama 由来 libggml-base 競合を避けるため、llama.cpp ビルド成果物を先頭に
+         - `export LD_LIBRARY_PATH="/home/shuirein928/llama.cpp/build/bin:/usr/local/cuda-12.8/lib64:${LD_LIBRARY_PATH:-}"`
+         - 既に start_local_llm.sh に ashigaruC5 が暫定追加済 → 整理して恒久化
+
+      **作業内容**:
+      1. 既存 scripts/start_local_llm.sh / stop_local_llm.sh を精査
+         - 場所要確認（/home/shuirein928/multi-agent-shogun/scripts/ または /home/shuirein928/ai-chat/）
+      2. 起動オプション整理:
+         - llama-server: `-m <model> -ngl 999 -c 32768 --jinja -fa --reasoning off
+                          --host 127.0.0.1 --port 8080`
+         - LD_LIBRARY_PATH 先頭設定
+         - PIDファイル管理（/tmp/llama-server.pid, /tmp/ai-chat.pid 等）
+         - ヘルスチェック（起動後 curl /health で確認、失敗時はログ吐いて exit 1）
+         - ログローテ（/tmp/llama-server.log, /tmp/ai-chat.log）
+      3. stop_local_llm.sh:
+         - PIDファイル経由で安全停止
+         - PIDファイル無い場合は pgrep フォールバック
+         - 強制 kill は -TERM → 5秒待機 → -KILL の段階的に
+      4. ai-chat/README.md に「起動・停止」セクションを追記
+         - `! bash scripts/start_local_llm.sh` 1発で起動
+         - `! bash scripts/stop_local_llm.sh` 1発で停止
+         - 再起動でハマる典型パターンと回避（CUDA 12.8/13.x注意、libggml競合等）
+      5. Playwright で再起動シナリオ検証
+         - 停止 → 起動 → /api/health 確認 → 既存セッション維持確認
+
+      **完了条件**:
+      - start_local_llm.sh / stop_local_llm.sh が冪等動作（重複起動防止・既停止時の停止OK）
+      - 殿が `! bash` 1発で完結（手作業ゼロ）
+      - 大将軍が再起動でハマらないこと（実機検証 or 殿目視）
+      - reports/tcmd_264/ または新規 reports/tcmd_264_followup/ に成果物
+        * runscripts_summary.md（差分・実装方針・検証結果）
+
+      **家老C裁量**:
+      - 足軽1-2名で十分
+      - PIDファイル方式 vs systemd-style の選択は家老C判断
+        （systemd は WSL2 で扱い面倒なので shellスクリプト+PIDファイル推奨）
+      - スクリプト保存場所（multi-agent-shogun/scripts/ vs ai-chat/）も家老C判断
+
+      **完了通知**:
+      - 家老C → 将軍C → 大将軍経由で殿に「再起動運用化完了」サマリ報告
+
+      **親tcmd**: tcmd_264（後追い、Phase 5 step 13 運用化）
+
+  - id: cmd_007
+    parent_tcmd: tcmd_280
+    timestamp: '2026-05-03T21:45:04+09:00'
+    project: night_city_tab
+    priority: high
+    status: pending
+    command: |
+      【Night City Tab Phase 1 — オールインワン改修（デザイン9項目+機能Tier1 7項目+コード品質）】
+
+      ===================
+      🔴 まず必読
+      ===================
+      本プロジェクトは本日(2026-05-03)登録の新規案件。家老Cは初参戦。
+      **作業前に必ず context/night_city_tab.md を読め**（個人利用前提・既存挙動・5テーマ等の重要事項あり）。
+
+      ===================
+      対象リポジトリ
+      ===================
+      - ローカル: /home/shuirein928/night-city-tab/
+      - GitHub: Mogy1945/night-city-tab (Private、credential.helper store 永続化済、git push 自由)
+      - 構成: Manifest V3 拡張 / newtab.html 33KB(843行) + newtab.js 14KB(338行) / Vanilla / localStorage `nct_*_v2`
+
+      ===================
+      ミッション（Phase 1 全範囲オールインワン）
+      ===================
+      殿指示「全部オールインワンでやって。個人利用です」。
+      Phase 1-A デザイン9項目 + Phase 1-B 機能Tier1 7項目 + コード品質改善 を一気に実装する。
+
+      ## Phase 1-A デザイン詰め（9項目）
+      A1: ロゴ表記 `NIGHTCITYNET` → `NIGHT // CITY // NET` 等（家老C世界観強化裁量）
+      A2: 設定モーダルをHUDコマンドコンソール風に再設計（角ばったフレーム/モノスペース/ターミナル風）
+      A3: 検索バー高さ +20% 程度拡大、シャープな影・ネオングロー強化
+      A4: クォート位置を右下→左下 or 上中央（Chromeフッターバー干渉回避）
+      A5: クロック・UPTIME・HUD数字を Share Tech Mono に統一
+      A6: カーソル — 装飾エリア=crosshair、操作対象(ボタン/リンク/入力欄)=pointer
+      A7: 設定モーダルの theme-list hover時に背景色一瞬切替（即時プレビュー）
+      A8: 全インタラクティブ要素に微細発光（box-shadow: 0 0 8px var(--secondary)/40%）
+      A9: マーキー速度 SLOW/NORMAL/FAST 3段階切替を設定に追加
+
+      ## Phase 1-B 機能追加 Tier 1（7項目）
+      B1: HUD風 TODO「ACTIVE_MISSIONS」ウィジェット（左サイド、追加/削除/チェック、localStorage永続化、DECRYPTED風取消線）
+      B2: 天気HUD表示「WEATHER: RAIN 18°C」（wttr.in https://wttr.in/Tokyo?format=j1、APIキー不要、CORS要確認、東京固定OK）
+      B3: コマンドパレット Cmd+K / Ctrl+K（検索/テーマ切替/設定/ショートカット遷移統合、HUD風UI）
+      B4: 検索サジェスト DuckDuckGo Autocomplete API (https://duckduckgo.com/ac/?q=xxx&type=list)、CORS確認、HUDドロップダウン
+      B5: ショートカット並び替え HTML5 drag-and-drop、最大行数を14個(2行)に拡張
+      B6: 日付ローカライズ統一（曜日英語のまま or 日本語化、家老C判断 — 殿FBは「ちぐはぐ」）
+      B7: localStorage 容量対策（Base64アイコンを最大64x64リサイズ、quality調整、5MB上限保護）
+
+      ## コード品質
+      - getBase64 の reject 後 try/catch 追加
+      - 設定モーダル aria-* 充実
+      - localStorage 容量超過時 graceful degradation（alert表示）
+
+      ===================
+      🚨 厳守事項
+      ===================
+      - **既存挙動の破壊禁止**:
+        * 5テーマ全動作維持（NIGHT CITY/DARK NEON/BLUE TONE/RETRO FUTURE/ARASAKA）
+        * 検索5エンジン動作維持
+        * HUD表示・グリッチ・スキャンライン全演出維持
+        * localStorage `nct_*_v2` namespace維持（v3 migration が必要なら殿FB取れ）
+        * Esc / `/` / Tab キーバインド維持
+        * manifest.json version: 2.0.0 → 2.1.0 に bump
+      - **個人利用前提**: Google Fonts/FontAwesome CDN 維持OK、CSP厳格化対応不要
+      - **YAGNI**: Phase 2/3 項目（BIOS起動演出/ニュース/音声/マルチユーザー/テーマエディタ等）に手を出すな
+      - **API選定**: APIキー不要+CORS許容のみ採用。APIキー要求するサービス禁止
+
+      ===================
+      動作確認・検証
+      ===================
+      1. Playwright で newtab.html 単体検証（file:// 読み込み、tcmd_278 で libatk等整備済、headless Chromium起動可）
+         - 5テーマ各々のスクショ取得（Before/After）
+         - playwright_evidence/ に最低10枚（5テーマ × Before/After）
+         - モバイル375x667は対象外（拡張機能はPC前提）
+      2. コードレベル検証3層:
+         - 既存挙動の関数名/変数名残存 grep
+         - localStorage namespace `nct_*_v2` 不変確認
+         - manifest.json permissions が `topSites` のみ維持確認
+      3. 殿手動確認用ガイド作成（reports/tcmd_280/manual_verification.md）
+
+      ===================
+      期待出力
+      ===================
+      - 実コード改修: newtab.html / newtab.js / manifest.json (icons/ 不変)
+      - reports/tcmd_280/
+        * implementation_summary.md（全16項目+コード品質の改修一覧、行数、grep検証結果）
+        * design_changes.md（Phase 1-A Before/After + 思想説明）
+        * feature_additions.md（Phase 1-B 各機能仕様 + 操作方法 + 殿への使い方ガイド）
+        * manual_verification.md（殿が chrome://extensions/ で再読込→動作確認する手順）
+        * playwright_evidence/ （5テーマ × Before/After ≥10枚）
+
+      ===================
+      🚨🚨🚨 GitHub push 必達（最重要）🚨🚨🚨
+      ===================
+      tcmd_278 では「実装→commit→push→Vercel反映」のうち push が抜け落ち殿に手戻りさせた轍がある。
+      本tcmdは **必ず GitHub origin/main への push 完了まで責任を持て**。
+      - commit message: 16項目を網羅したサマリ
+      - push 直接OK（プライベートリポジトリ、credential.helper store 永続化済み）
+      - **家老Cは将軍Cに完了報告する前に push 完了を確認せよ**
+        * `git log origin/main..HEAD` が空 / `git status` が clean / `gh repo view --json` で最新commit hash一致 等
+      - 完了通知に必ず commit hash + push確認エビデンス1行を含めること
+
+      ===================
+      家老C裁量
+      ===================
+      - 足軽配分（16項目+コード品質。4足軽並列推奨。例:
+        * C1: A1+A2+A4 (デザイン中核)
+        * C2: A3+A5+A6+A7+A8+A9 (デザイン詰め)
+        * C3: B1+B3 (TODO+コマンドパレット)
+        * C4: B2+B4+B5+B6+B7+コード品質
+        ※ 上記は例。家老C完全裁量で組み直し可）
+      - SubAgent モデル: Opus推奨（デザイン+機能設計は深さ優先）。Sonnet可な箇所は家老C判断
+      - 何ループ回しても良い、家老C が「Phase 1 完成」と確信するまで磨け
+      - A1（ロゴ表記）等の好み色強い項目は本実装＋モック2案併記でもよい
+        ただし基本は本実装まで完遂
+
+      ===================
+      禁止事項
+      ===================
+      - 殿の他PJ無接触 (camp-schedule-app, weight-diary, fumoto, shogun-web, mini-gather 等)
+      - Phase 2/3 項目への手出し禁止（BIOS起動演出/ニュース/音声/マルチユーザー/テーマエディタ等）
+      - フレームワーク移行禁止（React/Vue 等）— Vanilla維持
+      - 軍A (tcmd_265) / 軍B (tcmd_279) のタスク妨害禁止
+
+      ===================
+      完了条件
+      ===================
+      - Phase 1-A 9項目 + Phase 1-B 7項目 + コード品質改善 全実装
+      - Playwright で5テーマ全 Before/After スクショ済
+      - reports/tcmd_280/ 4ファイル + playwright_evidence/ ≥10枚 配置済
+      - **GitHub origin/main に push完了**（push確認エビデンス必須）
+      - 大将軍に send-keys で完了報告（実装件数 + commit hash + push確認 + ファイルパス）
+
+      **親tcmd**: tcmd_280（大将軍→将軍C、殿指示、high優先）
+
+  - id: cmd_008
+    parent_tcmd: tcmd_282
+    timestamp: '2026-05-03T23:34:42+09:00'
+    project: night_city_tab
+    priority: high
+    status: pending
+    command: |
+      【Night City Tab レイアウト崩壊修正 — 殿FB緊急対応】
+
+      ===================
+      🚨 殿のFB（一字一句）
+      ===================
+      「見たけどなんか変だよ！左寄りというか・・・」
+
+      ===================
+      症状
+      ===================
+      cmd_007 (tcmd_280) で TODO リスト ACTIVE_MISSIONS を画面左サイドに追加した結果、
+      **メインコンテンツ (ロゴ / 検索バー / ショートカット / クォート) が画面全体の中央でなく、
+      TODOパネル右側の余白の中央に配置されてしまっている**。
+
+      reports/tcmd_280/playwright_evidence/ で一目瞭然:
+      - before_01〜05 = ロゴ/検索バー画面中央 (改修前=正しい姿)
+      - after_01〜05 = ロゴ/検索バー左1/3〜中央寄り偏り (改修後=不具合)
+      - 全5テーマで同一症状 = グローバルなレイアウト破綻
+
+      ===================
+      ミッション
+      ===================
+      レイアウトを画面全体の中央配置に戻し、TODOリストとの両立を成立させる。
+      **tcmd_280 の他改修 (デザイン9 + 機能7 + コード品質3 + manifest 2.1.0) は破壊するな**。
+
+      ===================
+      想定原因と修正方針（家老C裁量）
+      ===================
+
+      ## 原因仮説
+      - main要素の display:flex / grid 中央配置が、TODO追加で flex parent 領域配分が変わり中央が画面中央でなくなった
+      - もしくは TODO を absolute/fixed で配置せず flow に入れた結果、main 幅が縮小して中央点ずれ
+      - クォート左下移動 (A4) と TODO 左サイドが視覚的干渉している可能性も
+
+      ## 修正方針 — 家老C裁量で具体策決定
+
+      **方針A: TODO を absolute/fixed 配置**
+      - `position: fixed; top: 24px; left: 24px;` 等で flow から外す
+      - main の中央配置は元の (画面全体中央) に戻る
+      - TODO 幅が大きすぎるとメインに被るので適切な max-width
+      - Phase 1-A の発光/カーソル等 TODO にも適用済維持
+
+      **方針B: グリッドレイアウト3カラム化**
+      - `grid-template-columns: 280px 1fr 280px`
+      - 左=TODO / 中央=メイン / 右=予備領域で対称
+      - クォート位置は家老C判断
+
+      **方針C: 折りたたみサイドバー**
+      - デフォルト閉じ (小トリガーアイコンのみ)
+      - クリックで展開、メイン位置は影響なし
+      - 設定で常時表示切替
+
+      **3案実装比較してもよいし、最も筋が良いと判断する1案を直接実装してよい。
+      最終的に画面中央配置が復活することが必須。**
+
+      ===================
+      🚨 既存挙動破壊禁止 (tcmd_280 の20項目)
+      ===================
+      以下は全て動作維持:
+      - Phase 1-A 9項目 (ロゴ NIGHT//CITY//NET、設定モーダル HUD風、検索バー拡大、影グロー、テーマプレビュー、マーキー速度3段階、カーソル分離 等)
+      - Phase 1-B 7項目 (TODO、天気HUD、コマンドパレット Cmd+K、検索サジェスト、ショートカット並び替え14個、日付ローカライズ、localStorage容量対策)
+      - コード品質3項目 (getBase64 try/catch、aria-*、safeSetItem)
+      - 5テーマ全動作、検索5エンジン、HUD表示、グリッチ、Esc/`/`/Tab キーバインド
+      - localStorage `nct_*_v2` namespace 不変
+
+      ===================
+      🚨🚨🚨 GitHub push 必達 🚨🚨🚨
+      ===================
+      tcmd_278 の轍を絶対踏まない。修正→commit→push→origin同期確認まで完了。
+      manifest version 2.1.0 → 2.1.1 に bump。
+      家老Cは将軍Cに完了報告する前に push 確認エビデンス4点を立証せよ:
+        (1) git ls-remote origin refs/heads/main = local HEAD 完全一致
+        (2) git log origin/main..HEAD 空
+        (3) git status clean
+        (4) git diff origin/main..HEAD 空
+      tcmd_280 完遂時と同水準の立証を求む。
+
+      ===================
+      動作確認・検証
+      ===================
+      1. Playwright で5テーマ × Before/After (PC 1920x1080)
+         - Before = tcmd_280 の after_XX (左寄り状態)
+         - After  = tcmd_282 の修正後 = 中央配置復活
+      2. レスポンシブ確認 (1920 / 1280 / 1024px) で崩れないか
+      3. tcmd_280 の20項目全動作維持を grep 検証
+      4. Console.error 0件確認
+      5. TODO/天気/コマンドパレット/サジェストが意図通り動くか実動作確認
+
+      ===================
+      期待出力
+      ===================
+      - 実コード改修
+        * newtab.html / newtab.js (CSSのみで解決可能なら最小修正)
+        * manifest.json (version 2.1.1)
+      - reports/tcmd_282/
+        * layout_fix_summary.md (原因分析 + 採用方針 + 変更箇所)
+        * before_after.md (Before=tcmd_280後の左寄り状態 / After=修正後の中央配置)
+        * playwright_evidence/ (5テーマ × Before/After 計10枚 + クォート/TODO配置確認)
+      - GitHub commit + push (origin/main 同期確認、push確認エビデンス4点)
+
+      ===================
+      家老C裁量
+      ===================
+      - 方針A/B/C の選択 (実装比較 or 1案直行)
+      - 足軽配分 (軽量タスク、1名で十分の見込み)
+      - SubAgent モデル (Opus 推奨、レイアウト判断は深さ優先)
+      - クォート位置を左下→右下に戻すか家老C判断
+        (Chromeフッターバーは殿側で右クリック非表示できるため、右下復帰OK)
+
+      ===================
+      🚨 厳守事項
+      ===================
+      - tcmd_280 の20項目への破壊禁止
+      - 殿の他PJ無接触 (mini-gather, camp-schedule-app, weight-diary, fumoto, shogun-web 等)
+      - 軍A (アイドル) / 軍B (アイドル) のタスク影響なし
+      - YAGNI 厳守、追加機能禁止 (殿は「左寄り直して」と言っているだけ、それ以上やるな)
+      - manifest 2.1.1 への version bump 以外、設定変更禁止
+
+      ===================
+      完了条件
+      ===================
+      - 5テーマ全て中央配置復活
+      - tcmd_280 の20項目全動作維持確認
+      - Playwright Before/After スクショ取得 (5テーマ ≥10枚)
+      - reports/tcmd_282/ 3ファイル配置
+      - **GitHub origin/main に push完了 (commit hash + push確認エビデンス4点 報告)**
+      - 大将軍に send-keys で完了報告（採用方針 + commit hash + push確認 + ファイルパス）
+
+      **親tcmd**: tcmd_282（殿FB緊急対応、大将軍→将軍C、high優先）
+
+  - id: cmd_009
+    parent_tcmd: tcmd_284
+    timestamp: '2026-05-03T23:59:52+09:00'
+    project: night_city_tab
+    priority: high
+    status: pending
+    command: |
+      【Night City Tab レイアウト微調整 — 殿FB 3点（軽量）】
+
+      ===================
+      🚨 殿のFB（一字一句）
+      ===================
+      「ミッションタブと見出しがかぶっているのが嫌だ。常にかぶらないようにしてほしいし、
+       そもそも見出しはもっと狭くしてもいいと思う。あと。左下の名言だけど、でかすぎかな、
+       目立たない感じで下の中央におきたい」
+
+      ===================
+      症状（実画像で確認済み）
+      ===================
+      reports/tcmd_282/playwright_evidence/after_01_night_city.png:
+      1. ロゴ「NIGHT // CITY // NET」が画面幅80%以上占有 → ACTIVE_MISSIONS パネル(左サイド220px)と
+         至近距離、画面幅縮小時(1280以下)でかぶる可能性大
+      2. ロゴが大きすぎる、コンパクト化しても世界観維持できる
+      3. 左下クォート(名言)がでかすぎ、左下配置は目立ちすぎる → 「目立たない感じで下中央」希望
+
+      ===================
+      ミッション
+      ===================
+      上記3点の軽量レイアウト調整。tcmd_280/282 の他改修は破壊しない。
+
+      ===================
+      実装範囲（3項目）
+      ===================
+
+      ## 修正1: ロゴ縮小 + ミッションパネル衝突回避
+      - ロゴ「NIGHT // CITY // NET」フォントサイズ・幅を縮小
+        * 目安: 現状80%占有 → **50-60%占有**（家老C裁量、1024〜1920pxで美しく見えるサイズ）
+        * グリッチエフェクト・3層構造は維持
+        * 「サイバーパンクらしいインパクト」を失わない範囲で
+      - 画面幅1024px時点でも **ACTIVE_MISSIONS パネルと絶対にかぶらない**ことを保証
+        * ロゴ要素 max-width 設定 + margin-left 調整
+        * もしくは ACTIVE_MISSIONS をさらに狭く + 透過度UPで主張弱める
+        * 家老C裁量で最良解選定
+      - レスポンシブ確認: **1920 / 1366 / 1280 / 1024 / 768px** 全幅で衝突なし
+
+      ## 修正2: クォートを「目立たない感じで下中央」に
+      - 現在: 左下配置 (tcmd_280 A4 で中央→左下に移動済)
+      - 殿希望: **下中央** + **小さく目立たない**
+      - 具体仕様（家老C裁量）:
+        * position: bottom 16-24px、left/right 50% transform translateX(-50%) で中央寄せ
+        * フォントサイズを現状から-30〜40%程度
+        * 色を `--muted` 系に（テキスト主張弱める）
+        * max-width 縮小（300-400px）、長文は省略 or 折返し
+        * 装飾枠（あれば）は撤去 or 極薄
+      - tcmd_280 下部HUDマーキーと干渉しない位置を選定
+        * 候補: マーキー上にクォート / 左右で分ける / クォートをマーキー下
+        * 一番すっきり見える配置を選んでよい
+
+      ## 修正3: manifest version bump
+      - 2.1.1 → 2.1.2
+
+      ===================
+      🚨 厳守事項
+      ===================
+      ## tcmd_280/282 既存挙動破壊禁止
+      - Phase 1-A 9項目（ロゴ NIGHT//CITY//NET 表記自体は維持、サイズだけ縮小）
+      - Phase 1-B 7項目（TODO/天気/コマンドパレット/サジェスト/ショートカット並び替え/日付/Quota）
+      - コード品質3項目
+      - **tcmd_282 のレイアウト中央配置 (flex wrap center) は維持**
+      - 5テーマ全動作、検索5エンジン、HUD表示、グリッチ、Esc/`/`/Tab キーバインド
+      - localStorage `nct_*_v2` namespace 不変
+
+      ## YAGNI厳守
+      - 殿が言ってない変更禁止 — 他要素のサイズ調整、配色変更、新機能追加、設定項目追加 等
+      - **3点のFB範囲のみ修正**
+
+      ===================
+      🚨🚨🚨 GitHub push 必達 🚨🚨🚨
+      ===================
+      tcmd_278 の轍踏まない。実装→commit→push→origin同期確認まで完了。
+      manifest 2.1.1 → 2.1.2 bump。
+      家老Cは将軍Cに完了報告する前に push 確認エビデンス4点を立証せよ:
+        (1) git ls-remote origin refs/heads/main = local HEAD 完全一致
+        (2) git log origin/main..HEAD 空
+        (3) git status clean
+        (4) git diff origin/main..HEAD 空
+      tcmd_280/282 同水準の立証を求む。
+
+      ===================
+      動作確認・検証
+      ===================
+      1. **画面幅5段階で衝突チェック**: 1920 / 1366 / 1280 / 1024 / 768px
+         → ACTIVE_MISSIONS パネルとロゴが絶対重ならない
+      2. クォートが下中央に「目立たず」配置されている
+      3. tcmd_280/282 既存挙動 grep 検証 PASS
+      4. Console.error 0件
+      5. 5テーマ × Before/After スクショ取得
+
+      ===================
+      期待出力
+      ===================
+      - 実コード改修
+        * newtab.html / newtab.js（CSSのみで解決できれば理想、極小diff推奨）
+        * manifest.json (version 2.1.2)
+      - reports/tcmd_284/
+        * layout_tweak_summary.md（修正内容 + 採用判断 + 変更箇所）
+        * before_after.md（5テーマ × ロゴサイズ・クォート位置の Before/After）
+        * playwright_evidence/ （5テーマ × Before/After + レスポンシブ 1920/1280/1024px）
+      - GitHub commit + push (origin/main 同期確認、push確認エビデンス4点)
+
+      ===================
+      家老C裁量
+      ===================
+      - ロゴサイズの具体値（家老C のデザインセンス）
+      - ACTIVE_MISSIONS との衝突回避の最良解（ロゴ縮小 vs パネル縮小 vs 両方）
+      - クォートとマーキーの配置関係（上下並列 / 別段）
+      - 足軽配分（軽量タスクなので1名で十分の見込み）
+      - SubAgent モデル（Opus or Sonnet 家老C判断、デザイン判断は深さ優先）
+
+      ===================
+      禁止事項
+      ===================
+      - 殿の他PJ無接触 (mini-gather, camp-schedule-app, weight-diary, fumoto, shogun-web 等)
+      - 軍A (アイドル) / 軍B (tcmd_283 Mini Gather Phase 2) のタスク影響なし
+      - tcmd_280/282 の20項目+レイアウト中央配置への破壊
+      - YAGNI違反（殿が言ってない箇所への手出し）
+      - manifest 2.1.2 への version bump 以外、設定変更禁止
+
+      ===================
+      完了条件
+      ===================
+      - ロゴ縮小 + ACTIVE_MISSIONSとの衝突 全幅(5段階)で回避
+      - クォート下中央、目立たないサイズ
+      - tcmd_280/282 全項目動作維持確認
+      - Playwright 5テーマ × レスポンシブ Before/After 取得
+      - reports/tcmd_284/ 3ファイル配置
+      - **GitHub origin/main に push完了 (commit hash + push確認エビデンス4点 報告)**
+      - 大将軍に send-keys で完了報告（採用判断 + commit hash + push確認 + ファイルパス）
+
+      **親tcmd**: tcmd_284（殿FB軽量3点、大将軍→将軍C、high優先）
+
+  - id: cmd_010
+    parent_tcmd: tcmd_286
+    timestamp: '2026-05-04T00:26:38+09:00'
+    project: night_city_tab
+    priority: high
+    status: pending
+    command: |
+      【Night City Tab — ロゴ表記戻し + 1行化 + 名言テキスト光らせ（殿FB 2点+1）】
+
+      ===================
+      🚨 殿のFB（一字一句）
+      ===================
+      「2点。見出しが普通のPC画面で改行されているとださいかも　あと//って区切り変じゃね？
+       で名言だけど、名言本文はもう少し光らせたい。エリア的な目立ち度はいまでいいとおもう」
+
+      ===================
+      経緯
+      ===================
+      tcmd_280 でロゴを「NIGHTCITYNET」(一語) → 「NIGHT // CITY // NET」に変更した。
+      tcmd_284 で1920px幅では2行折り返し表示になった。
+      殿の判断:
+        - 「//」区切りは違和感、元の「NIGHTCITYNET」一語に戻す
+        - PC画面で1行で収まるサイズ調整（折り返しダサい）
+        - 名言は配置(下中央・控えめ)はそのまま、本文テキストに微発光
+
+      ===================
+      ミッション（軽量、CSS+HTML 微修正）
+      ===================
+
+      ## 修正1: ロゴ表記を元の「NIGHTCITYNET」一語に戻す
+      - tcmd_280 で `NIGHT // CITY // NET` (3パート区切り) に変更したのを
+        **元の `NIGHTCITYNET` 一語に戻す**
+      - 元のグリッチエフェクト3層構造（data-text + ::before/::after）と整合
+      - HTMLの `<div id="brand">` の中身を元に戻す + JSの data-text 設定値も連動
+
+      ## 修正2: PC画面で1行化（改行させない）
+      - 1920px / 1366px / 1280px / 1024px の主要viewportで**ロゴが1行で収まる**よう調整
+      - tcmd_284 で `clamp(36px,5vw,64px)` + `max-width: min(720, 100vw-560)` を入れたが、
+        「NIGHTCITYNET」一語に戻れば文字数減（13文字→12文字、ただしスペース分減る）
+      - max-width は実体に合わせて再調整（1行化を優先）
+      - 768px以下のmissions パネル非表示処理は維持
+      - **ACTIVE_MISSIONSパネルとの衝突回避は引き続き全幅で保証**
+
+      ## 修正3: 名言本文を光らせる（テキスト微発光）
+      - 現状: opacity 0.7 + var(--muted) + フォント縮小で「目立たない」状態
+      - 殿希望: **エリア配置はそのまま**、**本文テキストだけ微発光**で「光ってる感」を出す
+      - 具体実装案:
+        * text-shadow でネオン微発光（例: `text-shadow: 0 0 4px var(--secondary), 0 0 8px var(--secondary-30%)`）
+        * 各テーマの secondary or accent 色を使うとテーマ整合
+        * 強度は「目立たない」基準を維持しつつ、本文に「ほのかな発光」を感じる程度
+        * **opacity / muted色 / フォントサイズは現状維持**（エリア的目立ち度UPさせない）
+      - 出典 (— 著者) 部分は muted のまま（光らせるのは本文だけ）
+
+      ## 修正4: manifest version bump
+      - 2.1.2 → 2.1.3
+
+      ===================
+      🚨 厳守事項
+      ===================
+      ## tcmd_280/282/284 既存挙動破壊禁止
+      - Phase 1-A 9項目（A1=ロゴ表記戻すのは本tcmdで許可、A4=名言下中央配置維持）
+      - Phase 1-B 7項目
+      - コード品質3項目
+      - tcmd_282 のレイアウト中央配置 (flex wrap center)
+      - tcmd_284 の missions/quote 配置調整 (quote下中央 left:50%/translateX/text-align:center / opacity 0.7 / フォント縮小 / muted色 / 768px@media missions display:none)
+      - 5テーマ・5検索エンジン・全HUD機能 維持
+      - localStorage `nct_*_v2` namespace 不変
+
+      ## YAGNI厳守
+      - 殿が言ってない変更禁止
+        ❌ 名言出典の光らせ、配置の再変更、他テキスト要素への発光適用、グリッチエフェクト調整
+      - 本tcmdの 4項目 (ロゴ表記戻し / 1行化 / 名言本文光らせ / version bump) のみ
+
+      ===================
+      🚨🚨🚨 GitHub push 必達 🚨🚨🚨
+      ===================
+      tcmd_278 の轍踏まない。実装→commit→push→origin同期確認まで完了。
+      manifest 2.1.2 → 2.1.3 bump。
+      家老Cは将軍Cに完了報告する前に push 確認エビデンス4点を立証せよ:
+        (1) git ls-remote origin refs/heads/main = local HEAD 完全一致
+        (2) git log origin/main..HEAD 空
+        (3) git status clean
+        (4) git diff origin/main..HEAD 空
+      tcmd_280/282/284 と同水準の立証を求む。
+
+      ===================
+      動作確認・検証
+      ===================
+      1. **ロゴが「NIGHTCITYNET」一語表示**に戻っている
+      2. **5段階viewport 全部で1行表示**（折り返しゼロ）— 1920/1366/1280/1024/768
+      3. **ACTIVE_MISSIONSとの衝突回避** 全幅で維持（KZ-C006 公式準拠）
+      4. **名言本文のみ光っている**（出典は muted のまま、エリアサイズ・opacity・フォント不変）
+      5. tcmd_280/282/284 既存挙動 grep 検証 PASS
+      6. Console.error 0件
+      7. 全5テーマで一貫した品質
+
+      ===================
+      期待出力
+      ===================
+      - 実コード改修
+        * newtab.html / newtab.js
+        * manifest.json (version 2.1.3)
+      - reports/tcmd_286/
+        * tweak_summary.md（4項目修正内容）
+        * before_after.md（5テーマ × ロゴ表記/名言光らせ Before/After）
+        * playwright_evidence/ （5テーマ × Before/After + 5段階viewport 1920/1366/1280/1024/768px で1行化確認）
+      - GitHub commit + push (origin/main 同期確認、push確認エビデンス4点)
+
+      ===================
+      家老C裁量
+      ===================
+      - max-width の具体値（1行化を保証する数値）
+      - text-shadow の強度（「光ってる感」の解釈、テーマ毎の色選定）
+      - 足軽配分（軽量タスクなので1名で十分）
+      - SubAgent モデル（Sonnet で十分の見込み、家老C判断）
+
+      ===================
+      禁止事項
+      ===================
+      - 殿の他PJ無接触 (mini-gather, camp-schedule-app, weight-diary, fumoto, shogun-web 等)
+      - 軍A (アイドル) / 軍B (tcmd_285 進行中) のタスク影響なし
+      - tcmd_280/282/284 既存項目への破壊
+      - YAGNI違反（殿が言ってない箇所への手出し）
+      - manifest 2.1.3 への version bump 以外、設定変更禁止
+
+      ===================
+      完了条件
+      ===================
+      - ロゴ「NIGHTCITYNET」一語表示
+      - 全5段階viewportで1行化（折り返しゼロ）
+      - 名言本文のみ光っている（エリア配置・サイズ・opacity・muted色維持）
+      - tcmd_280/282/284 全項目動作維持
+      - Playwright Before/After スクショ取得（5テーマ × 5viewport）
+      - reports/tcmd_286/ 3ファイル配置
+      - **GitHub origin/main に push完了 (commit hash + push確認エビデンス4点 報告)**
+      - 大将軍に send-keys で完了報告（採用判断 + commit hash + push確認 + ファイルパス）
+
+      **親tcmd**: tcmd_286（殿FB 2点+1、大将軍→将軍C、high優先）
+
+  - id: cmd_011
+    parent_tcmd: tcmd_290
+    timestamp: '2026-05-04T10:07:33+09:00'
+    project: night_city_tab
+    priority: high
+    status: pending
+    command: |
+      【Night City Tab — 検索結果ページ装飾化 (パターン1+3 おすすめ構成)】
+
+      ===================
+      経緯
+      ===================
+      tcmd_280/282/284/286 で新タブUI完成。殿FB「Google検索結果画面もサイバーパンク化できないの？」
+      → 大将軍提案 = パターン1(content_script でGoogle検索結果装飾被せ) + パターン3(遷移時演出はデフォルトOFF)
+      → 殿選択: 「おすすめで」(パターン1+3 おすすめ構成)
+
+      ===================
+      ミッション (中規模、新規ファイル+設定UI拡張)
+      ===================
+      Google検索結果ページ (google.com/search) にサイバーパンク装飾を被せる content_script を実装。
+      新タブからGoogle検索遷移時の演出も追加（デフォルトOFF）。
+
+      ===================
+      実装範囲（6 Step）
+      ===================
+
+      ## Step 1: manifest.json 拡張
+      - `content_scripts` セクション追加
+        * matches: `["*://www.google.com/search*", "*://www.google.co.jp/search*"]`
+        * js: `["search_overlay.js"]`
+        * css: `["search_overlay.css"]`
+        * run_at: `document_idle` (Google初期描画完了後に被せる、ガタつき回避)
+      - permissions 追加検討:
+        * `storage` (テーマ・設定をlocalStorage互換で保存、newtab.html と共有)
+        * host_permissions に google.com/google.co.jp 追加 (matches だけで足りる場合不要)
+      - manifest version 2.1.3 → **2.2.0** (機能追加なので minor bump)
+
+      ## Step 2: search_overlay.css（被せ装飾）
+      - **コーナーブラケット 4辺**: 画面四隅に Night City Tab と同じ装飾（黄色ライン、L字）
+      - **上部ステータスバー（簡易）**: 画面上に固定の小さなHUD
+        * 例: `> SEARCH_RESULT // QUERY: {検索語} // ENGINE: GOOGLE`
+        * 検索語は URL から取得 (?q=xxx)
+        * newtab の HUD と同じフォント・色（テーマ連動）
+      - **スキャンライン**: 検索結果全体に薄く被せる（newtab の bg-scanlines 流用）
+      - **検索結果カードのテーマ色化**:
+        * リンク色をテーマの primary 色に
+        * 背景に微妙な暖色グロー
+        * hover時にグロー強化
+      - **5テーマ全対応**: localStorage の `nct_theme_v2` を読んで body にクラス付与
+      - **z-index設定**: Google のレイアウトを破壊しないよう、装飾は overlay 層 (pointer-events: none for 装飾)
+
+      ## Step 3: search_overlay.js（DOM操作）
+      - `nct_theme_v2` を chrome.storage 経由で取得（localStorage は newtab/content_script で別スコープのため）
+        * **注意**: chrome.storage.local 採用時は newtab.html 側も chrome.storage に変える必要あり
+        * 簡易解: localStorage アクセス共通化、または content_script で chrome.runtime.sendMessage 経由
+        * 家老C裁量で実装方針選定（最小コスト優先、過剰実装禁止）
+      - 検索結果のクエリを URL から抽出して上部HUDに表示
+      - `nct_settings_v2` から `searchOverlayEnabled` を読み、無効なら何もしない（殿が無効化できる保険）
+      - DOMContentLoaded 後に装飾要素を body に挿入
+      - Google レイアウト変更耐性: querySelector で取れない場合は warning + 装飾だけ被せる（HUDは出す、結果カード装飾は諦める）
+
+      ## Step 4: 設定UI追加（newtab.html / newtab.js）
+      - 設定モーダルに **新セクション「// SEARCH_OVERLAY」** 追加
+        * チェックボックス: 「検索結果ページに装飾を表示」（**デフォルトON**）
+        * チェックボックス: 「検索遷移時にHUD演出を表示 (0.3秒)」（**デフォルトOFF**、殿の好み次第で有効化）
+      - `nct_settings_v2` に `searchOverlayEnabled` (default true), `searchTransitionEnabled` (default false) 追加
+
+      ## Step 5: 遷移時HUD演出（パターン3、デフォルトOFF）
+      - 検索フォーム submit 時、`searchTransitionEnabled` が true なら:
+        * 0.3秒の HUDオーバーレイ表示「ESTABLISHING CONNECTION... QUERYING NET...」
+        * その後 location.href で遷移
+      - false (デフォルト) の場合は即遷移（既存挙動維持）
+
+      ## Step 6: アイコン・名前等
+      - manifest description 更新: 「Refined cyberpunk new tab + Google search overlay. ...」
+
+      ===================
+      🚨 厳守事項
+      ===================
+
+      ## tcmd_280/282/284/286 既存挙動破壊禁止
+      - 新タブUI 全機能維持（Phase 1-A 9項目 + Phase 1-B 7項目 + コード品質3項目 + tcmd_282/284/286 修正）
+      - 5テーマ切替、検索5エンジン、HUD、グリッチ、ロゴ NIGHTCITYNET、Esc/`/`キーバインド 全維持
+      - tcmd_282 中央配置 (flex wrap center) / tcmd_284 KZ-C006 衝突回避公式 / tcmd_284 quote下中央 /
+        tcmd_286 ロゴ1行化 (clamp(28,4vw,56)+nowrap) / tcmd_286 名言本文ネオン微発光 維持
+      - localStorage `nct_*_v2` namespace 維持（既存 + searchOverlayEnabled / searchTransitionEnabled 追加）
+
+      ## Google検索結果ページの実用性破壊禁止
+      - **検索結果のクリック動作・スクロール・ページネーション 全部維持**
+      - 装飾は overlay 層、Google の DOM には触れない（テーマ色化はCSSのみ）
+      - 検索結果が読めない・操作できない事態を絶対起こすな
+      - レイアウト崩壊検出時はフォールバック（HUDだけ出して結果カード装飾は諦める）
+      - Google AdWords 等の広告は破壊しない（自然な閲覧維持）
+
+      ## 個人利用前提
+      - Chrome Web Store 公開予定なし（殿方針）
+      - Google の規約より、殿の体験優先
+
+      ## 完全無料運用維持
+      - 新規CDN・新規API・新規SDK 不要（content_script は自前 HTML/CSS/JS のみ）
+      - Custom Search API は採用禁止（殿が課金懸念示した領域）
+
+      ## YAGNI厳守
+      - 殿が言ってない機能追加禁止
+        ❌ YouTube/GitHub/その他サイトへの content_script 拡張（Google検索のみ）
+        ❌ 広告ブロック機能（Google規約違反）
+        ❌ 検索結果のフィルタリング・並び替え
+        ❌ 検索履歴記録
+      - パターン1+3（デフォルトOFF）のおすすめ構成のみ
+
+      ## Chrome 拡張機能の制約
+      - content_scripts は MV3 で許容範囲内の実装に限定
+      - inline script 禁止（CSP違反）
+      - eval / new Function 禁止
+      - 外部CDN読み込みは content_script では不可、本拡張は依存なし設計
+
+      ===================
+      🚨🚨🚨 GitHub push 必達 🚨🚨🚨
+      ===================
+      tcmd_278 の轍踏まない。実装→commit→push→origin同期確認まで完了。
+      manifest 2.1.3 → 2.2.0 (minor bump)。
+      家老Cは将軍Cに完了報告する前に push 確認エビデンス4点を立証せよ:
+        (1) git ls-remote origin refs/heads/main = local HEAD 完全一致
+        (2) git log origin/main..HEAD 空
+        (3) git status clean
+        (4) git diff origin/main..HEAD 空
+      tcmd_280/282/284/286 同水準の立証を求む。
+
+      ===================
+      動作確認・検証
+      ===================
+      1. **chrome://extensions/ で Night City Tab 再読込**（殿の手作業ガイドに記載）
+      2. **Google検索 (test とか) して装飾被さるか確認**
+      3. 5テーマ全部で装飾が連動切替されるか
+      4. 検索結果クリック・スクロール・ページネーション動作維持
+      5. 設定で「装飾表示」OFF → 装飾消える
+      6. 設定で「遷移演出」ON → 検索submit時に0.3秒HUD表示
+      7. tcmd_280/282/284/286 既存挙動 grep 検証 PASS
+      8. console.error 0件
+      9. Playwright で5テーマ × 検索結果スクショ取得
+
+      ===================
+      期待出力
+      ===================
+      - 実コード改修
+        * manifest.json (version 2.2.0、content_scripts追加)
+        * **search_overlay.js (新規ファイル)**
+        * **search_overlay.css (新規ファイル)**
+        * newtab.html / newtab.js (設定UI追加)
+      - reports/tcmd_290/
+        * search_overlay_summary.md（実装内容 + 既存機能維持確認 + 5テーマ整合）
+        * before_after.md（5テーマ × Google検索結果ページ Before/After）
+        * playwright_evidence/ （5テーマ × 検索結果スクショ + 設定画面 + 遷移演出）
+        * manual_verification.md（殿が拡張機能リロード→Google検索→確認する手順）
+      - GitHub commit + push (origin/main 同期確認、push確認エビデンス4点)
+
+      ===================
+      家老C裁量
+      ===================
+      - 装飾の具体グラフィック判断（コーナーブラケット強度、グロー量、テーマ色整合）
+      - 上部HUDの文字配置・情報密度
+      - 検索結果カードの装飾レベル（控えめ / 派手）
+      - localStorage vs chrome.storage の使い分け（実装最小コスト優先）
+      - レイアウト崩壊耐性の設計
+      - 足軽配分（中規模タスク、2-3足軽並列推奨。例:
+        * C1: manifest + search_overlay.css (Step 1+2)
+        * C2: search_overlay.js + chrome.storage 連携 (Step 3)
+        * C3: 設定UI + 遷移演出 + manifest description (Step 4+5+6)
+        ※ 上記は例、家老C裁量で組み直し可）
+      - SubAgent モデル（Opus 推奨、Chrome拡張仕様+デザイン判断は深さ優先）
+      - kaizen候補は kaizen.yaml 転記OK
+
+      ===================
+      禁止事項
+      ===================
+      - 殿の他PJ無接触 (mini-gather, camp-schedule-app, weight-diary, fumoto, shogun-web 等)
+      - 軍A (アイドル) / 軍B (tcmd_289 進行中、Mini Gather ホワイトボード) のタスク影響なし
+      - tcmd_280/282/284/286 既存項目への破壊
+      - Google検索結果の実用性破壊
+      - YAGNI違反（Google検索以外への拡張、広告ブロック等）
+      - Chrome Web Store公開を見据えた過剰実装
+
+      ===================
+      完了条件
+      ===================
+      - manifest.json content_scripts 追加 + version 2.2.0
+      - search_overlay.css/.js 新規実装
+      - 5テーマ全部で装飾連動
+      - 設定UI追加（装飾ON default / 遷移演出OFF default）
+      - tcmd_280/282/284/286 全項目動作維持確認
+      - Playwright Before/After スクショ取得
+      - reports/tcmd_290/ 4ファイル配置
+      - **GitHub origin/main に push完了 (commit hash + push確認エビデンス4点 報告)**
+      - 大将軍に send-keys で完了報告（実装件数 + commit hash + push確認 + ファイルパス）
+
+      **親tcmd**: tcmd_290（殿選択「おすすめで」、大将軍→将軍C、high優先）
+
+  - id: cmd_012
+    parent_tcmd: tcmd_293
+    timestamp: '2026-05-04T10:44:36+09:00'
+    project: night_city_tab
+    priority: high
+    status: pending
+    command: |
+      【Night City Tab — 検索装飾強化 (A+C 派手化、検索体験フル サイバーパンク化)】
+
+      ===================
+      経緯
+      ===================
+      tcmd_290 で Google検索結果ページに装飾被せ + 遷移演出(デフォルトOFF) 実装済。
+      殿実機確認FB:「全体感あまり変わってない」= 装飾が控えめすぎて世界観インパクト不足。
+
+      家老C の実装は安全寄り (pointer-events:none / Google DOM無接触) で品質高いが、
+      装飾密度が低くてサイバーパンク世界観が出ていない。
+
+      殿選択: **D = A+C 組み合わせ**
+        - A: 検索結果装飾を派手化（コーナー拡大+HUD強化+結果リンク大胆色化+カード装飾）
+        - C: 遷移演出を派手化（0.3秒→1.5-2秒のBIOS POST風）
+        + 遷移演出をデフォルトONに変更（検索体験フローそのものをサイバーパンク化）
+
+      ===================
+      ミッション (中規模、A強化6 + C強化3 + version bump)
+      ===================
+      Google検索体験全体を「Night City Tab 世界観 完全没入」レベルまで派手化する。
+
+      ===================
+      実装範囲（A強化6項目 + C強化3項目）
+      ===================
+
+      ## Step A1: コーナーブラケット 強化
+      - 現状: 細いライン4辺
+      - 新仕様: 太め+長め+グロー強化、ロゴ風の「[ ]」感を出す
+        * ライン幅 1px → 2-3px
+        * L字長 画面比 5% → 10-15%
+        * box-shadow 強めのネオングロー追加（テーマ secondary 色）
+
+      ## Step A2: 上部HUDステータスバー 強化
+      - 現状: 細い1行
+      - 新仕様: 高さ拡大+情報密度UP+モノスペース強調
+        * 高さ 24-32px → 48-56px
+        * 左側: `[QUERY] {検索語} | [ENGINE] GOOGLE | [STATUS] ONLINE`
+        * 右側: `[NET] STABLE | [TRACE] CLEAN | [TIME] HH:MM:SS` (newtab HUD相当)
+        * 背景: 半透明黒 + テーマ色 bottom-border 2-3px
+        * フォント: Share Tech Mono / Rajdhani 等モノスペース系（newtab整合）
+
+      ## Step A3: スキャンライン濃度UP
+      - 新仕様: newtab レベルまで濃度UP（家老C裁量）
+      - 全画面被せ、結果テキストの可読性は損なわない
+
+      ## Step A4: Google 結果リンク色 大胆テーマ色化
+      - 新仕様: リンク色を**思い切って primary 色**（NIGHT CITY=黄 #fcee0a）に
+        * hover時さらにグロー強化
+        * 訪問済みリンクは secondary 色（cyan #00f0ff）
+        * underline をテーマ色2px下線に
+        * **Google純正の青（#1a0dab）からの大胆な乖離OK**
+        * **WCAG AA 程度のコントラスト比は維持**（読めなくなったら本末転倒）
+
+      ## Step A5: 検索結果カードに枠+グロー
+      - 新仕様: 各検索結果カードに:
+        * 1px ボーダー（テーマ secondary 色）
+        * 微発光のbox-shadow
+        * ホバー時にグロー強化
+        * カード間余白も調整
+      - **重要**: Google DOM 無接触原則維持（::before/::after 被せOK、querySelector 取得後の被せ可、DOM改変NG）
+
+      ## Step A6: 背景にノイズ+グリッド全面適用
+      - 新仕様: newtab と同じ bg-noise + bg-grid を全画面 fixed で被せる
+      - 検索結果テキスト可読性は損なわない（透明度調整）
+
+      ## Step C1: 遷移演出 BIOS POST風 派手化
+      - 現状: 0.3秒の単純overlay
+      - 新仕様: **1.5-2秒**のBIOS POST風タイプライター演出
+        ```
+        > NIGHT_CITY_NET v2.2.0
+        > ESTABLISHING NEURAL LINK...
+        > AUTHENTICATING USER... [OK]
+        > QUERYING GLOBAL NET...
+        > TRACE INITIALIZED [OK]
+        > SEARCHING: "{検索語}"
+        ```
+        * 各行 0.2-0.3秒間隔でタイプライター式表示
+        * グリッチエフェクト混入（newtab の glitch-burst 流用）
+        * 完了後 fade out + Google検索結果へ遷移
+
+      ## Step C2: 遷移演出 デフォルトON 変更
+      - 現状: `searchTransitionEnabled: false` がデフォルト
+      - 新仕様: **`searchTransitionEnabled: true`** をデフォルトに変更
+      - 殿が邪魔と感じれば設定で OFF 可（保険維持）
+
+      ## Step C3: 演出スキップ機能
+      - 1.5-2秒待つのが煩わしい場面用に**任意キーで即遷移スキップ**
+      - 例: Esc / Enter / Space で即座にfade outして検索遷移
+      - 演出を楽しむ vs 急いで検索 の両立
+
+      ## Step バージョン bump
+      - manifest 2.2.0 → **2.3.0**
+      - 「装飾派手化 + 遷移演出デフォルトON」は minor 機能追加扱い
+
+      ===================
+      🚨 厳守事項
+      ===================
+
+      ## tcmd_280/282/284/286/290 既存挙動破壊禁止
+      - 新タブUI 全機能維持（Phase 1-A 9項目 + Phase 1-B 7項目 + コード品質3項目 + ロゴ NIGHTCITYNET 維持）
+      - 5テーマ切替、検索5エンジン、HUD、グリッチ、Esc/`/`キーバインド 全維持
+      - tcmd_282 中央配置 / tcmd_284 KZ-C006 衝突回避公式 / tcmd_284 quote下中央 /
+        tcmd_286 ロゴ1行化 (clamp(28,4vw,56)+nowrap) / tcmd_286 名言本文ネオン微発光 /
+        tcmd_290 chrome.storage 案D ミラー / typeof chrome 3条件guard 維持
+      - localStorage `nct_*_v2` namespace 維持
+
+      ## Google検索結果ページの実用性破壊禁止
+      - **検索結果のクリック動作・スクロール・ページネーション 全部維持**
+      - 装飾は overlay 層、Google DOM 無接触（::before/::after CSS だけで被せ）
+      - 検索結果が読めない事態を絶対起こすな
+      - 大胆色化リンクのコントラスト比 **WCAG AA 程度は維持**
+      - レイアウト崩壊検出時はフォールバック（コーナーブラケット+HUDだけ出して結果カード装飾諦める）
+      - Google AdWords は破壊しない
+
+      ## 個人利用前提
+      - Chrome Web Store 公開予定なし
+      - CSP厳格対応不要、CDN維持OK
+
+      ## 完全無料運用維持
+      - 新規CDN・新規API・新規SDK 不要
+      - 効果音は Web Audio synth または非採用
+
+      ## YAGNI厳守
+      - 殿が言ってない機能追加禁止
+        ❌ YouTube/GitHub/その他サイトへの content_script 拡張
+        ❌ 広告ブロック機能
+        ❌ 検索結果のフィルタリング・並び替え
+        ❌ 検索履歴記録
+        ❌ ロード中アイコンのカスタマイズ
+      - **A強化6項目 + C強化3項目 + version bump のみ**
+
+      ## Chrome 拡張機能の制約
+      - content_scripts は MV3 で許容範囲内
+      - inline script 禁止（CSP違反）
+      - eval / new Function 禁止
+      - 外部CDN content_script 経由読み込み不可
+
+      ===================
+      🚨🚨🚨 GitHub push 必達 🚨🚨🚨
+      ===================
+      tcmd_278 の轍踏まない。実装→commit→push→origin同期確認まで完了。
+      manifest 2.2.0 → 2.3.0 (minor bump)。
+      家老Cは将軍Cに完了報告する前に push 確認エビデンス4点を立証せよ:
+        (1) git ls-remote origin refs/heads/main = local HEAD 完全一致
+        (2) git log origin/main..HEAD 空
+        (3) git status clean
+        (4) git diff origin/main..HEAD 空
+      tcmd_280/282/284/286/290 同水準の立証を求む。
+
+      ===================
+      動作確認・検証
+      ===================
+      1. **chrome://extensions/ 再読込 → google.com/search?q=test で実機確認**（殿手動）
+      2. **5テーマ全部で装飾連動切替**
+      3. 検索結果クリック・スクロール・ページネーション動作維持（実用性チェック）
+      4. 大胆色化リンクの可読性確認（WCAG AA 目安）
+      5. 遷移演出 1.5-2秒で Google遷移完了
+      6. Esc/Enter/Space で演出スキップ動作
+      7. tcmd_280/282/284/286/290 既存挙動 grep 検証 PASS
+      8. console.error 0件
+      9. Playwright newtab UIスクショは取れる（検索結果ページは file:// で取れない、manual_verification.md で殿手動制度化）
+
+      ===================
+      期待出力
+      ===================
+      - 実コード改修
+        * manifest.json (version 2.3.0)
+        * search_overlay.css （現7,392B から拡張、+5-10KB想定）
+        * search_overlay.js （現3,375B から拡張、+3-5KB想定）
+        * newtab.html / newtab.js （遷移演出+設定UI調整）
+      - reports/tcmd_293/
+        * bold_overlay_summary.md（A強化6項目+C強化3項目の実装内容）
+        * before_after.md（tcmd_290後 → 本tcmd後 の比較、世界観インパクト評価）
+        * playwright_evidence/ （5テーマ × 検索結果スクショ + 遷移演出スクショ + 設定モーダル）
+        * manual_verification.md（殿手動確認手順 更新版）
+      - GitHub commit + push (origin/main 同期確認、push確認エビデンス4点)
+
+      ===================
+      家老C裁量
+      ===================
+      - 装飾の具体グラフィック判断（家老C のサイバーパンクセンス）
+      - スキャンライン・ノイズ・グリッドの濃度バランス
+      - HUD表示情報の選定・配置
+      - リンク色の大胆さ調整（テーマ色との整合）
+      - BIOS POST 演出の文言・タイミング詳細
+      - 演出スキップキーの選定（Esc/Enter/Space どれか or 全部）
+      - 足軽配分（中規模タスク、2-3足軽並列推奨。例:
+        * C1: search_overlay.css A1-A6 派手化（7,392B→拡張）
+        * C2: search_overlay.js A連動 + 設定変更
+        * C3: newtab.html/js 遷移演出 BIOS POST + スキップ + manifest v2.3.0
+        ※ 上記は例、家老C完全裁量）
+      - SubAgent モデル（Opus 推奨、グラフィック+演出設計は深さ優先）
+      - tcmd_280/282/284/286/290 で家老C が見せた「設計4案検討→選定」レベルの安全運用継続を期待
+
+      ===================
+      禁止事項
+      ===================
+      - 殿の他PJ無接触 (mini-gather, camp-schedule-app, weight-diary, fumoto, shogun-web 等)
+      - 軍A (アイドル) / 軍B (tcmd_291 進行中、Mini Gather 部室化) のタスク影響なし
+      - tcmd_280/282/284/286/290 既存項目への破壊
+      - Google検索結果の実用性破壊（クリック不能・読めない・操作妨害）
+      - YAGNI違反
+
+      ===================
+      完了条件
+      ===================
+      - A強化6項目 + C強化3項目 + version 2.3.0 全実装
+      - 5テーマ全部で派手化された装飾が連動切替
+      - 遷移演出デフォルトON、Esc/Enter/Space スキップ動作
+      - tcmd_280/282/284/286/290 全項目動作維持確認
+      - Playwright newtab スクショ + manual_verification.md 更新
+      - reports/tcmd_293/ 4ファイル配置
+      - **GitHub origin/main に push完了 (commit hash + push確認エビデンス4点 報告)**
+      - 大将軍に send-keys で完了報告（実装件数 + commit hash + push確認 + ファイルパス + 殿手動確認手順）
+
+      **親tcmd**: tcmd_293（殿選択D=A+C派手化、大将軍→将軍C、high優先）
+
+  - id: cmd_013
+    parent_tcmd: tcmd_295
+    timestamp: '2026-05-04T15:14:55+09:00'
+    project: night_city_tab
+    priority: critical
+    status: pending
+    note: |
+      [2026-05-04T15:25 補足] tcmd_295 が大将軍YAML に正式発令された (timestamp 2026-05-04T15:21:56)。
+      先発の本cmd_013 (将軍C 直接受領分) と内容は同一系: Playwright拡張機能ロード+5テーマ×Google検索
+      実画面確認+殿FB「変」原因特定+修正+manifest 2.3.1+push完遂、tcmd_293 派手化方針は維持・調整に留める。
+      tcmd_295 command 全文は queue/taishogun_to_shogun.yaml 参照。本cmd_013 をそのまま継続せよ
+      (重複発令禁止)。tcmd_295 で追加された要点:
+        - Playwright拡張ロードスクリプトを reports/tcmd_295/playwright_extension_setup.md として
+          汎用化、KZ-C-EXT-001 相当で kaizen.yaml に転記し共通資産化
+        - bug_analysis.md は5テーマ毎の問題分類で記載（特定テーマだけ問題か全テーマ問題か区別）
+        - userDataDir は /tmp/playwright_extension_profile 推奨
+        - ファーストビュー / フルページ / リンクhover時 等 複数スクショ取得
+    command: |
+      【Night City Tab — 検索画面UI 殿FB「変」を Playwright実機で視覚特定→修正】
+
+      ===================
+      🚨 殿のFB（一字一句）
+      ===================
+      「検索画面のUIが変。Playwrightで実際の装飾後画面を見て確認・修正せよ。」
+
+      ===================
+      🚨 重要: tcmd_293 の判断ミス指摘
+      ===================
+      tcmd_293/cmd_012 完遂報告で「file:// 制約で Playwright実機確認不可 → 殿手動委譲」と判断したが、
+      **実は Playwright は --load-extension で Chrome拡張機能をロード可能**:
+        - chromium.launchPersistentContext + args: ['--load-extension=...', '--disable-extensions-except=...']
+        - これで実際の google.com 検索結果ページに content_scripts(search_overlay.css/.js) を
+          効かせた状態のスクショが撮れる
+        - tcmd_280/290 の Playwright環境(libatk等)はそのまま流用可
+
+      → 「Playwright で取れない」は思い込みだった。
+        殿は実機で見て「変」と感じている = 派手化が殿の感性とズレている可能性大。
+
+      ===================
+      ミッション (critical: 視覚問題の根本特定→修正→push)
+      ===================
+      1. Playwright で Chrome拡張機能ロード手法を調査・実装
+      2. 実際の google.com/search?q=test を 5テーマ全部撮る（実機装飾状態）
+      3. 殿FB「変」の正体を**視覚的に特定**せよ
+         - 派手すぎて読めない？
+         - リンク色が痛い？
+         - HUDが情報過多で邪魔？
+         - スキャンライン濃すぎ？
+         - カード枠が結果カードと干渉してる？
+         - レイアウトがGoogle UIと噛み合わない？
+         - BIOS POSTがやかましい？
+         → **家老Cが画面を見て「これが変だ」と判定**
+      4. 必要な修正を実施（派手すぎ部分の控えめ化、可読性回復、衝突解消など）
+         - 修正方針は家老C裁量、ただし**tcmd_293 の D=A+C 装飾路線は維持**しつつ問題箇所のみ補正
+         - tcmd_293 の Phase A/B 改修を全部巻き戻すのは過剰反応 — 「変」と感じる箇所を狙い撃ち
+      5. 修正後 Before/After 実機スクショを並べて殿に提示できる形にせよ
+      6. GitHub push 完遂必須
+
+      ===================
+      実装手順（家老C 設計裁量、参考フロー）
+      ===================
+
+      ## Step 1: Playwright Chrome拡張ロード手法 PoC (足軽1名)
+      - chromium.launchPersistentContext で拡張機能ディレクトリを指定する手法を調査
+      - 最小コードで google.com/search?q=test を撮影できることを実証
+      - 実証コードは reports/tcmd_295/ext_load_poc.md に記録
+      - **headless=false が必須な可能性あり** (拡張機能は通常 headed)
+        → WSL2 環境で xvfb-run / Xvfb 仮想ディスプレイ要否を判断
+        → 既に tcmd_278 で libatk等インストール済、追加で xvfb-run 必要なら殿に手作業依頼
+
+      ## Step 2: 5テーマ × 実機スクショ取得 (足軽1-2名)
+      - 各テーマで chrome://extensions/ 相当の状態で google.com/search?q=test 撮影
+      - 1920x1080 と 1366x768 程度の主要viewport
+      - スクショは reports/tcmd_295/playwright_evidence/ に配置
+      - tcmd_293 完遂時に「取れない」と判断したものを今度こそ取る
+
+      ## Step 3: 殿FB「変」の視覚診断 (家老C統合)
+      - 5テーマスクショを家老Cが**自分の目で**精査
+      - 「変」の正体を箇条書きで列挙: reports/tcmd_295/visual_diagnosis.md
+      - 各問題の重要度（critical/high/medium/low）と修正方針案を併記
+
+      ## Step 4: 修正実装 (足軽1-2名)
+      - 視覚診断で特定した問題のみ狙い撃ち修正
+      - tcmd_293 の Phase A/B 路線は基本維持、問題箇所のみ控えめ化
+      - Before/After 比較を見ながら反復
+      - manifest 2.3.0 → 2.3.1 patch bump
+
+      ## Step 5: After 実機スクショ + push (足軽1名)
+      - 修正後 Playwright 5テーマ × 実機スクショ取得
+      - reports/tcmd_295/before_after_real.md で並べて比較（殿提示用メイン成果物）
+      - GitHub commit + push + 4点立証
+
+      ===================
+      🚨 厳守事項
+      ===================
+
+      ## tcmd_280/282/284/286/290/293 既存挙動破壊禁止
+      - 新タブUI 全機能維持
+      - 5テーマ切替、検索5エンジン、HUD、グリッチ、ロゴ NIGHTCITYNET、Esc/`/`キーバインド 全維持
+      - tcmd_290 chrome.storage 案D / typeof chrome 3条件guard 維持
+      - tcmd_293 の派手化路線は基本維持、問題箇所のみ補正（巻き戻し禁止）
+      - localStorage `nct_*_v2` namespace 維持
+
+      ## Google検索結果の実用性破壊禁止
+      - クリック・スクロール・ページネーション 全部維持
+      - Google DOM 無接触原則維持（::before/::after / overlay層）
+      - WCAG AA 程度のコントラスト比維持
+
+      ## 視覚診断は家老C自身の目で
+      - 「ユーザーの感覚」を家老Cが代理する形で視覚評価
+      - 機械的な grep / lint だけで「OK」判定するな（tcmd_293 同型ミスの再発防止）
+      - 殿の「変」を取りこぼさず、家老Cが見て違和感ある箇所も併せて指摘
+
+      ## YAGNI厳守
+      - 視覚問題の修正のみ
+        ❌ 機能追加、新装飾追加、新エフェクト追加
+        ❌ 新規ファイル追加（既存 search_overlay.css/.js / newtab.html/.js / manifest のみ）
+      - 殿が「変」と言った検索画面UIの修正に集中
+
+      ===================
+      🚨🚨🚨 GitHub push 必達 🚨🚨🚨
+      ===================
+      tcmd_278 の轍踏まない。実装→commit→push→origin同期確認まで完了。
+      manifest 2.3.0 → 2.3.1 (patch bump、視覚不具合修正)。
+      家老Cは将軍Cに完了報告する前に push 確認エビデンス4点を立証せよ:
+        (1) git ls-remote origin refs/heads/main = local HEAD 完全一致
+        (2) git log origin/main..HEAD 空
+        (3) git status clean
+        (4) git diff origin/main..HEAD 空
+      tcmd_280-293 同水準の立証を求む。
+
+      ===================
+      期待出力
+      ===================
+      - Playwright 拡張機能ロード PoC コード（reports/tcmd_295/ext_load_poc.md）
+      - reports/tcmd_295/
+        * ext_load_poc.md（Playwright 拡張ロード手法・実証コード）
+        * visual_diagnosis.md（殿FB「変」の正体特定、問題リスト + 重要度 + 修正方針）
+        * fix_summary.md（実施した修正内容 + 設計判断）
+        * before_after_real.md（Playwright実機 Before/After 5テーマ並べ、殿提示用メイン）
+        * playwright_evidence/ （Before=tcmd_293後の実機装飾 / After=tcmd_295修正後 各5テーマ）
+      - 実コード改修
+        * search_overlay.css / search_overlay.js / newtab.html / newtab.js / manifest.json (2.3.1)
+      - GitHub commit + push (origin/main 同期確認、push確認エビデンス4点)
+
+      ===================
+      動作確認・検証
+      ===================
+      1. Playwright 拡張機能ロード手法が再現可能（家老C以外の人間が走らせても同様にスクショ取れる）
+      2. 5テーマ × Before/After スクショ取得（実機装飾状態、file:// 単体ではなく Google実画面）
+      3. 視覚診断で特定した「変」が修正後に解消している
+      4. tcmd_280-293 既存挙動 grep 検証 PASS
+      5. console.error 0件
+      6. WCAG AA リンク可読性維持
+
+      ===================
+      家老C裁量
+      ===================
+      - 視覚診断の判断軸（殿の感性を推測しつつ家老Cの専門眼で評価）
+      - 修正範囲（部分控えめ化 / カード枠だけ削除 / HUD簡素化 等）
+      - Playwright 拡張ロード PoC 設計（chromium.launchPersistentContext / xvfb 要否）
+      - 足軽配分（中規模調査+修正、2-3足軽推奨）
+      - SubAgent モデル（Opus 推奨、視覚判断+Playwright 拡張ロード調査は深さ優先）
+      - **【重要】tcmd_293 の「Playwright で取れない」判断ミスを認め、再発防止策を kaizen.yaml に起票せよ**
+        (KZ-C00X 案件として「拡張機能ロード=launchPersistentContext で取れる」を将来確認チェックリスト化)
+
+      ===================
+      禁止事項
+      ===================
+      - 殿の他PJ無接触 (mini-gather, camp-schedule-app, weight-diary, fumoto, shogun-web 等)
+      - 軍A (アイドル) / 軍B (進行中タスク) のタスク影響なし
+      - tcmd_280-293 既存項目への破壊
+      - tcmd_293 派手化路線の全面巻き戻し（問題箇所のみ補正）
+      - YAGNI違反
+
+      ===================
+      完了条件
+      ===================
+      - Playwright 拡張機能ロード PoC 確立 + 実証スクショ取得
+      - 殿FB「変」の視覚診断完了
+      - 必要な修正実施（manifest 2.3.1 patch bump）
+      - tcmd_280-293 全項目動作維持確認
+      - reports/tcmd_295/ 4-5ファイル + playwright_evidence/ 配置
+      - **GitHub origin/main に push完了 (commit hash + push確認エビデンス4点 報告)**
+      - 大将軍に send-keys で完了報告（視覚診断結果サマリ + 修正内容 + commit hash + push確認 + ファイルパス）
+      - kaizen.yaml に「Playwright拡張ロード=取れる」教訓 起票
+
+      **親tcmd**: tcmd_295（殿FB緊急、大将軍→将軍C、critical優先）
+      **教訓**: tcmd_293 で「取れない」と早合点した判断ミスの清算。今後 Playwright 適用範囲を狭めて思考停止しない。
+
+  - id: cmd_014
+    parent_tcmd: tcmd_313
+    timestamp: '2026-05-06T19:06:07+09:00'
+    project: mini_gather
+    priority: high
+    status: done
+    completed_at: '2026-05-06T19:30:00+09:00'
+    note: |
+      [将軍Cメモ] 家老C Claude Code が前cmd_013 完了後にOOM Killed (564.7k tokens) で落ちたため、
+      将軍Cが claude --dangerously-skip-permissions で再起動した (Sonnet 4.6 で起動、
+      armies.yaml では opus 指定だが起動オプション未指定でデフォルトSonnet)。
+      → 家老Cはまずセッション開始の必須行動 (CLAUDE.md自動ロード→MEMORY.md→tmux変数で軍C確認→
+        instructions/karo.md読込) を実行してから本cmdに着手せよ。
+      → モデルがopus必須なら殿に !claude --model opus を依頼するか、本タスクは企画系で
+        Sonnetでも遂行可能なため家老C判断で進めてよい (殿好み推測+企画系=Sonnet十分の見込み)。
+    command: |
+      【Mini Gather サービス全体 改善・アップデート案リスト作成 (実装ストップ、企画のみ)】
+
+      ===================
+      🚨 殿の指示(極めて短い)
+      ===================
+      「次は実装なしで、このサービス自体の改善・アップデート案をCに！」
+
+      → 軍C は Mini Gather に**初参戦**だが、第三者視点で純粋な企画タスク。
+      tcmd_312 (軍A、編集モード改善案) と並行稼働、対象範囲が異なる:
+        - 軍A (tcmd_312): **編集モード**にフォーカス
+        - 軍C (本tcmd): **サービス全体**の俯瞰視点 (編集モード以外も含む)
+
+      ===================
+      🚨 絶対厳守 (実装禁止)
+      ===================
+      - **本番コード /home/shuirein928/mini-gather/index.html に触れるな**
+      - **改善案リスト作成のみ**
+      - 殿が選別後、別tcmd で軍B に実装させる
+      - 軍A (tcmd_312) と軍B (tcmd_311 進行中) と並列、コード競合禁止
+      - 軍A の編集モード案と**重複しない範囲**を狙う(編集モード関連は軍A 担当、本tcmd は他全部)
+
+      ===================
+      🔴 まず必読 (新規プロジェクト初参戦)
+      ===================
+      家老C は本cmdに着手前に必ず以下を読む:
+      - context/mini_gather.md (プロジェクト固有コンテキスト、技術スタック・確定方針・25指令連続無事故完遂史)
+      - /home/shuirein928/mini-gather/index.html 全体 (本番コード、改修禁止だが全体把握必須)
+
+      ===================
+      参考: Mini Gather サービス全体仕様
+      ===================
+      Mini Gather v2.1.6 (本番 https://mini-gather-psi.vercel.app/?room=genshiken)
+
+      Phase 1: C案アイソメ・カフェ風 → げんしけん部室マップ
+      Phase 2: PeerJS音声P2P / チャット3レイヤー(GLOBAL/AREA/DM) / 絵文字リアクション 1-5キー /
+        ユーザー一覧 / 入退室アニメ / 入室通知 / 足音
+      Phase 2.5: DPR対応 + AA + グラデ・シャドウ・フィルター画質改善
+      Phase 3: 部室1部屋 / ホワイトボード Firestore永続化 / 管理者マップ編集機能(軍A担当) /
+        インタラクションマーカー / 座る/立つ + 座り姿 / テトリス風ゲーム + Firestoreハイスコア
+      Phase 4: Room genshiken 固定 / ロビー3設定(マイク/音量/プレゼンス) /
+        プレゼンス3状態(オンライン/取り込み中/応答不可) / 隠し部屋(本棚インタラクト→個室3つ独立ゾーン)
+
+      管理者ホワイトリスト: inmogy / いんもぎ
+      完全無料運用: PeerJS Cloud (無料枠) + Vercel Hobby + Firebase Spark
+      依存最小: PeerJS + Quicksand + Firebase SDK 4本のみ
+
+      殿の確定方針 (動かさない原則):
+        - 完全無料運用維持 (Cloud Run / 有料SDK 禁止)
+        - 単一HTML維持 (ビルドステップ追加禁止)
+        - 個人利用前提 (殿1人運用、友達数人で使う)
+        - YAGNI厳守
+        - 「足すより削る」哲学
+        - 60fps維持
+        - backup/before-medium-improvements ブランチ保全
+
+      ===================
+      ミッション
+      ===================
+      Mini Gather **サービス全体**を「**もっと使いやすく / もっと楽しく / もっと強く**」する案を
+      家老C 独立第三者視点で**多方面から**洗い出し、殿に提示するリストを作成する。
+
+      **🚨 編集モード関連は軍A (tcmd_312) 担当、本tcmd は除外**。
+      軍A と重複する案を出さないよう、編集モード以外にフォーカス。
+
+      ===================
+      改善軸 11軸 (家老C 裁量で取捨選択+追加)
+      ===================
+
+      ## A. 体験 (オンボーディング・初回UX)
+      - 初回訪問時のウェルカムガイド / 操作説明 (移動/チャット/絵文字/座る/ゲーム/ホワイトボード)
+      - 友達招待UX (URL共有時の初心者フレンドリー化) / ロビー画面の魅力UP
+
+      ## B. コミュニケーション
+      - リアクション種類追加・カスタマイズ (現状 1-5キーで5種類のみ)
+      - 絵文字の見せ方改善 (アニメーション、サイズ、位置)
+      - チャットUI改善 (タイムスタンプ、未読バッジ、検索、@メンション)
+      - DM 改善 (履歴、複数同時 etc.) / 音声品質改善 (ノイズキャンセル、エコー対策)
+      - スクリーン共有 (Phase 2 で却下した案、再検討余地)
+      - ビデオ通話 (オプション、Phase 2 で却下)
+
+      ## C. 世界観・没入感
+      - BGM (環境音・ローファイ系、ON/OFF) / 時間帯演出 (朝/昼/夜でマップ装飾変化)
+      - 季節演出 (年末年始装飾、夏祭り、桜) / イベント演出 (誕生日・参加人数記念)
+      - アバター個性 (帽子・メガネ・服色 等のカスタマイズ)
+      - キャラ名前以外の表示 (ステータス・気分絵文字 等)
+
+      ## D. ゲーム要素 (テトリス以外)
+      - 簡易ゲーム追加 (オセロ・神経衰弱・ガチャ・大富豪・人狼風 等)
+      - 対戦機能 (テトリス対戦、PeerJS で十分可能)
+      - スコア共有のSNS風 (ハイスコア通知、月間ランキング)
+      - ミニゲーム同時起動 / 隠しイースターエッグ (殿好み、げんしけん原作要素)
+
+      ## E. ホワイトボード強化
+      - 図形描画 (テキストのみ→丸/四角/線も) / 画像貼付 (Imgur 等の URL貼付け)
+      - 過去履歴閲覧 / 複数ホワイトボード切替
+      - 投票・投稿の見やすさ向上 (絵文字リアクション on ホワイトボード) / エクスポート
+
+      ## F. アクセス・参加性
+      - スマホ対応強化 (モバイルレイアウト・タッチ操作改善)
+      - 接続安定性 (PeerJS再接続強化、TURN サーバー無料採用)
+      - 参加上限拡大 (現状 6-8人、SFU検討は規模違いだが)
+      - 招待リンクUX (短縮URL・QRコード・SNS共有) / パスワード制部屋 / 音声ON/OFF選択
+
+      ## G. 永続化・データ
+      - 入退室ログ (誰がいつ来たか、招待主向け)
+      - チャット履歴の保存・検索 (現状揮発、Firestore採用検討)
+      - 部室の利用統計 (滞在時間、人気エリア、月間利用者数)
+      - 友達リスト・お気に入りユーザー / プロフィール (自己紹介、SNSリンク)
+
+      ## H. 雰囲気・楽しさ
+      - 隠し部屋の追加 (現状3個室、もっと冒険的に)
+      - 立ち絵の表情変化 (チャット内容で笑顔・驚き) / ペット表示 (画面上を散歩する猫等)
+      - ボード・看板にお知らせ
+      - 部屋の家具インタラクション拡張 (TVクリックで動画再生・PCクリックでメモ等)
+
+      ## I. 運用・管理
+      - 管理者用ダッシュボード (殿inmogy 用、利用統計確認)
+      - スパム対策 (荒らしからの保護、現状フリー) / 通報機能 (問題ユーザーキック)
+      - データ整理ツール / バックアップ (Firestoreデータ自動エクスポート)
+
+      ## J. パフォーマンス・品質
+      - 描画ループ最適化 (60fps予算超過対策、tcmd_300以降の悪化トレンド)
+      - メモリ使用量削減 / 初回ロード時間短縮
+      - SVGスプライト化 (現状 Canvas直書き) / エラーロギング
+
+      ## K. ストア展開・発展性 (将来検討)
+      - 独自ドメイン取得 / PWA化 (オフライン部分対応・ホーム画面追加)
+      - シェアできる「来訪証明」スクショ機能
+      - チームコラボ向け B2B 化 (殿確定: 個人利用前提なので低優先)
+
+      ===================
+      期待出力
+      ===================
+      reports/tcmd_313/service_improvement_proposal.md (殿提示用、メイン成果物)
+
+      フォーマット:
+      ```markdown
+      # Mini Gather サービス全体 改善・アップデート案
+
+      ## サマリ
+      合計N件の改善案を A〜K 軸で分類
+
+      ## 改善案リスト
+      ### A. 体験 (オンボーディング・初回UX)
+      | # | 案名 | 内容 | 効果 | 実装規模 | 殿好み推測 |
+      |---|------|------|------|----------|-----------|
+      | A1 | 初回ウェルカムガイド | ... | ... | 小 | ★★ |
+
+      ### B. コミュニケーション
+      ...
+
+      ## 家老C 推奨 TOP5
+      殿に最初に検討してほしい優先度高5件
+      1. ...
+
+      ## 軍A (tcmd_312) との重複回避確認
+      編集モード関連は除外しているか確認
+      ```
+
+      評価軸:
+        - **効果**: 殿の体験向上度合い (★★★ 大 / ★★ 中 / ★ 小)
+        - **実装規模**: 小 (15分以下) / 中 (30〜60分) / 大 (60分以上)
+        - **殿好み推測**: 殿の他PJ動向・YAGNI志向・「足すより削る」哲学を踏まえた推測
+
+      副成果物 (任意):
+        - reports/tcmd_313/considered_but_rejected.md (家老Cが検討して却下した案、理由付き)
+
+      ===================
+      家老C 裁量
+      ===================
+      - 改善軸 A〜K の取捨選択+追加
+      - 案の数 (20件目安、選別困難になるほど多くしすぎない、40件以下推奨)
+      - 評価軸の細分化
+      - 推奨TOP5 の選定基準
+      - 足軽配分 (調査・列挙・評価で並列可、Sonnet で十分の見込み — 企画系のため)
+
+      ===================
+      🚨 厳守事項
+      ===================
+
+      ## 実装絶対禁止
+      - /home/shuirein928/mini-gather/index.html に触れるな
+      - reports/tcmd_313/ の md 作成のみ
+      - 殿選別後の実装は別tcmd で軍B に振る
+
+      ## 軍A (tcmd_312) との重複回避
+      - 編集モード関連は軍A 担当、本tcmd は除外
+      - 「編集モードに範囲選択追加」「家具テンプレ」等は軍A スコープ
+      - 「サービス全体UX」「コミュニケーション」「世界観」は本tcmd スコープ
+      - 重複可能性ある案は明記して殿に判断を仰ぐ形でも可
+
+      ## 殿の他PJ無接触
+      ## 軍A (tcmd_312) / 軍B (tcmd_311 進行中) のタスク影響なし
+
+      ## YAGNI 視点を持つ
+      家老C は「**殿が言ってないが欲しがりそうな機能**」も列挙していい。
+      ただし**過剰実装の典型例** (将来必要かも・ベストプラクティス・セキュリティ強化のため)
+      は必ず識別し、却下リスト or 殿好み推測 ★少なめ で扱う。
+
+      ## 既存機能との整合
+      - 完全無料運用維持 (有料サービス採用案は識別+理由付き提示)
+      - 単一HTML維持 (ビルドステップ要案は識別)
+      - 個人利用前提 (B2B化等の方向は KZ 寄り扱い)
+
+      ===================
+      🚨 KZ-167 ④透明性
+      ===================
+      家老C は他軍の知見を参考にしつつも、**独立した第三者視点**で評価せよ。
+      家老B が見落としている可能性ある領域 (例: スパム対策、参加上限、永続化方針 等)
+      を積極的に拾うこと。
+
+      ===================
+      🚨 軍A (tcmd_312) との連携
+      ===================
+      家老C は軍A の改善案リスト (tcmd_312 reports) を**参考にしてもよい**が、
+      軍A 完了前なら独立で進めてOK。完了後にあれば重複チェックで殿に提示。
+
+      ===================
+      完了条件
+      ===================
+      - reports/tcmd_313/service_improvement_proposal.md (殿提示用、メイン成果物)
+      - 家老C 推奨TOP5 明示
+      - A〜K 軸での分類完了
+      - 軍A (tcmd_312) との重複回避確認セクション記載
+      - 大将軍に send-keys で完了報告（案件数 + TOP5サマリ + ファイルパス）
+      - **本cmdは実装なし、git push 不要**（reports/tcmd_313/ md追加のみ commit + push 推奨）
+
+      **親tcmd**: tcmd_313（殿企画指示、大将軍→将軍C、high優先）
+
