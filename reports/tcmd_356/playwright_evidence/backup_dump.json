@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "dump": {
+    "furniture": 83,
+    "zones": 1,
+    "decorations": 6,
+    "floor": 373,
+    "mapW": 20,
+    "mapH": 20
+  },
+  "match": true,
+  "backupPath": "maps/genshiken/config/main_backup_tcmd356_pre_video_recording",
+  "restoreLineage26_sample": {
+    "main_backup_tcmd329": true,
+    "main_backup_tcmd337b_pre_doorfix": true,
+    "main_backup_tcmd338_pre_basesystem": true,
+    "main_backup_tcmd339_pre_coffee": true,
+    "main_backup_tcmd348_pre_6fixes": true,
+    "main_backup_tcmd350_pre_hightouch_cat_hints": true,
+    "main_backup_tcmd351_pre_coffee_button_icons": true,
+    "main_backup_tcmd352_pre_drink_sound_hint": true,
+    "main_backup_tcmd354_pre_label_pickup": true,
+    "main_backup_tcmd355_pre_minecraft_door": true
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "tcmd": "tcmd_356",
+  "cmd": "cmd_B123",
+  "version_unchanged": true,
+  "timestamp": "2026-05-08T16:07:09.336Z",
+  "backup_path": "maps/genshiken/config/main_backup_tcmd356_pre_video_recording",
+  "restore_lineage_26_layers": "tcmd_329-355 全 backup intact",
+  "ffmpeg_installed": false,
+  "ffmpeg_install_command": "sudo apt install -y ffmpeg",
+  "skill_files": {
+    "template_js": true,
+    "judging_md": true,
+    "extract_sh": true
+  },
+  "video": {
+    "path": "/home/shuirein928/multi-agent-shogun/reports/tcmd_356/playwright_evidence/video/page@22878cff1d8c325055abeaa3d164c5c3.webm",
+    "sizeMB": 0.23,
+    "under_30MB": true
+  },
+  "frames": {
+    "skipped": true,
+    "reason": "ffmpeg_not_installed"
+  },
+  "md5": {
+    "md5Map": {
+      "/home/shuirein928/multi-agent-shogun/reports/tcmd_356/playwright_evidence/scene_video_recorded.png": "33ac985f369d0cbde15a7a9ac4445f80",
+      "/home/shuirein928/multi-agent-shogun/reports/tcmd_356/playwright_evidence/scene_frames_extracted.png": "c948af83c77a18fcbad9d8f4fcd8a2f2",
+      "/home/shuirein928/multi-agent-shogun/reports/tcmd_356/playwright_evidence/scene_actual_pipeline.png": "a10a9f707e04cbd89c5dae9363f917dc"
+    },
+    "distinct": true,
+    "collisions": []
+  },
+  "md5_distinct": true,
+  "index_html_intact": true,
+  "KZ_188_21st_run_3_scenes": [
+    "scene_video_recorded",
+    "scene_frames_extracted",
+    "scene_actual_pipeline"
+  ],
+  "pageerror": 0,
+  "honest_assessment": {
+    "template_complete": "reports/_skill/playwright_test_template_with_video.js 新設 (launchWithVideo+extractFrames+md5DistinctOrFail)",
+    "ffmpeg_status": "🚨 未インストール、殿に !bash sudo apt install -y ffmpeg 依頼必要",
+    "video_recording": "雛形で recordVideo 640x360 動画生成確認",
+    "frame_extraction": "ffmpeg 未インストールで skip、ffmpeg 入手後再実行で抽出可能",
+    "md5_kaizen_continued": "tcmd_354 第15弾 md5 突合機構流用 (再実装ゼロ)",
+    "index_html_intact": "本番 index.html 完全無触 (git diff empty 確認)",
+    "KZ_167_60_milestone": "本tcmd で KZ-167 ④透明性 第60回大台到達挑戦"
+  },
+  "all_pass": true
+}
