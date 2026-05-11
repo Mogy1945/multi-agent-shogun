@@ -1759,3 +1759,170 @@ queue:
 
       **親tcmd**: tcmd_341（殿指示、大将軍→将軍C、medium優先）
 
+  - id: cmd_016
+    parent_tcmd: tcmd_353
+    timestamp: '2026-05-09T00:01:00+09:00'
+    project: turn_soccer
+    priority: medium
+    status: done
+    completed_at: '2026-05-11T00:00:00+09:00'
+    note: |
+      [将軍Cメモ] 本cmd は新規プロジェクト発足の段階1。**GitHub auth / Vercel auth で殿手作業が
+      必要な場合は勝手に進めず、必ず将軍Cに send-keys で殿への手作業依頼を明示すること**:
+        - gh auth status で未認証なら「殿に !gh auth login を依頼してほしい」と将軍Cへ報告
+        - Vercel CLI 未認証なら「殿に !vercel login を依頼してほしい」と将軍Cへ報告
+        - GitHub CLI と Vercel CLI が利用可能か起動時に確認すること
+      段階1 はゲームロジック未実装でOK、企画書 (DESIGN.md) が核心成果物。
+      tcmd_341 (UIUXレビュー) 完遂直後で別件として branch divergence 詳細報告も殿に伝達済 →
+      殿判断待ち (将軍C側で対応中)。本cmd は turn-soccer 新規リポ独立で divergence 案件と無関係。
+    command: |
+      【新規プロジェクト発足: ターン制サッカーゲーム (キャプ翼風選択肢ゲーム) 段階1 — 企画書+GitHub リポ作成+Vercel 連動デプロイ+プロジェクト雛形】
+
+      ===================
+      🎯 殿指示 (本日)
+      ===================
+      ① 「サッカーゲームをWebでいいから作りたい。リアルタイムアクションじゃなくて、ターン制的な要素を持つ」
+      ② 「ボール持っている味方選手がいたら、基本選択肢、その人だけの選択肢などが出て、パスドリブルシュートを選択して、いろいろ踏まえた確率で成功失敗決まる」
+      ③ 「ディフェンスの時、タックル、スライディング、マークとかをするとか」
+      ④ 「11VS11でもできるし、1人を選んで専任もできる」
+      ⑤ 「左画面に現在の全選手のポジションとボールの位置など出て、右上にポゼッションとかシュート数とかでて、右下に選択肢でる」
+      ⑥ 「昔のキャプテン翼のゲームに選択肢ゲームあって面白そうだなって感じ」
+      ⑦ 殿確定「Cでおk、フォルダもおk、11VS11で。github リポジトリ作ってvercel 連動でデプロイする」
+
+      ===================
+      🚨 段階1 仕様 (家老C 全裁量、本cmd 範囲)
+      ===================
+
+      ## A. プロジェクト雛形作成
+      - フォルダ: `/home/shuirein928/turn-soccer/`
+      - 構造 (家老C 採択、Mini Gather と独立):
+        * index.html (単一HTML、Mini Gather 流儀推奨、家老C 採択 Phaser/Pixi 等のエンジン採用も可)
+        * package.json (vercel デプロイ用最低限)
+        * README.md (プロジェクト説明)
+        * .gitignore
+      - 技術選定 (家老C 採択):
+        * 推奨1: Vanilla JS+単一HTML (Mini Gather 流儀、軽量、Vercel デプロイ簡単)
+        * 推奨2: Phaser 3 (ゲーム特化、CDN 経由で読込、開発速い)
+        * 殿好み「足すより削る」+完全無料運用 を考慮して家老C 採択
+
+      ## B. GitHub リポジトリ作成
+      - GitHub アカウント: 殿アカウント (Mogy1945 推定、家老C 確認、git config user で確認可)
+      - リポ名: `turn-soccer` 推奨 (家老C 採択)
+      - public or private (家老C 採択、Mini Gather は private なので同じ流儀推奨)
+      - gh CLI 経由で作成: `gh repo create Mogy1945/turn-soccer --private --source=. --remote=origin --push`
+      - main ブランチに初期 commit + push
+      - 🚨**gh auth status で未認証なら殿に !gh auth login を依頼**(将軍C経由)、勝手に進めるな
+
+      ## C. Vercel 連動デプロイ
+      - Vercel Hobby plan (無料、Mini Gather 同様)
+      - GitHub 連動でメインブランチ自動デプロイ
+      - vercel.json 必要なら作成 (静的 HTML なら最低限)
+      - デプロイ URL を README に記載
+      - 家老C が gh/vercel CLI 経由で接続
+      - 🚨**Vercel CLI 未認証なら殿に !vercel login を依頼**(将軍C経由)、勝手に進めるな
+
+      ## D. 企画書作成 (本cmd 核心成果物)
+      ファイル: `/home/shuirein928/turn-soccer/DESIGN.md` (or reports/tcmd_353/design.md、家老C 採択)
+
+      含めるセクション (11セクション必須):
+        1. ゲーム概要 (1-2段落、コンセプト)
+        2. ターン制ゲームループ (進行方式、時間管理、攻守切替)
+        3. 選択肢一覧
+           - 攻撃側 (ボール保持時): パス/ドリブル/シュート + 個別選手専用選択肢の例
+           - 守備側 (近接時): タックル/スライディング/マーク
+           - 個別選手専用選択肢の設計 (能力値ベース or 固定スキル)
+        4. 確率テーブル設計 (パス成功率/シュート決定率/タックル成功率/各選手能力値の影響)
+        5. モード:
+           - 11vs11 全選手操作モード (ターンごとに選手選択+選択肢)
+           - 1選手専任モード (他選手は AI、自分のターンだけ操作)
+        6. 画面レイアウト:
+           - 左画面: フィールドミニマップ (全選手位置+ボール位置)
+           - 右上: スタッツパネル (ポゼッション/シュート数/スコア/時間)
+           - 右下: 選択肢パネル (現在のターン選手の選択肢)
+           - **レイアウト ASCII モック必須**
+        7. AI 仕様 (1選手専任モード時の他選手 AI、シンプル方針)
+        8. データ構造 (選手データ/フィールドデータ/試合状態 JSON 例)
+        9. 技術選定理由 (Vanilla JS vs Phaser 等、家老C 採択+理由)
+        10. 段階ロードマップ:
+            - 段階1 (本cmd): 企画+雛形+デプロイ
+            - 段階2 (tcmd_354 想定): MVP = 1試合 1ハーフ ターン進行+選択肢+確率判定 (11vs11 簡易版)
+            - 段階3: AI 強化+演出+モード分岐
+            - 段階4: BGM/SE/拡張
+        11. 完全無料運用維持 (Vercel Hobby+静的サイト、サーバ不要)
+
+      ## E. 段階1 完了基準
+      - GitHub リポ作成済+Vercel デプロイ URL 取得
+      - DESIGN.md (企画書) 完成
+      - index.html 雛形 (タイトル+簡易レイアウトのみ、ゲームロジック未実装)
+      - 殿が DESIGN.md を読んで段階2 着手判断できる状態
+
+      ===================
+      🚨 厳守事項
+      ===================
+      - 殿の他PJ無接触 (Mini Gather に手を出さない)
+      - 軍A/B のタスク影響なし (Mini Gather 開発と完全独立)
+      - 完全無料運用維持 (Vercel Hobby+GitHub free+CDN 利用は無料枠内)
+      - 段階1 は**実装を最小限**に (ゲームロジック未実装、雛形のみ、企画書が核心)
+      - YAGNI: 殿が指示してない過剰機能の企画段階での膨張禁止
+      - 殿好み「足すより削る」哲学反映
+      - 🚨**GitHub auth/Vercel auth で殿手作業必要なら明示し殿に依頼 (勝手に進めない)**
+
+      ===================
+      期待出力
+      ===================
+      - /home/shuirein928/turn-soccer/ プロジェクトフォルダ
+      - /home/shuirein928/turn-soccer/DESIGN.md (企画書、本cmd 核心)
+      - /home/shuirein928/turn-soccer/index.html 雛形
+      - /home/shuirein928/turn-soccer/package.json+vercel.json (必要なら)
+      - /home/shuirein928/turn-soccer/README.md
+      - GitHub リポ Mogy1945/turn-soccer (or 家老C 採択名) public or private
+      - Vercel デプロイ URL
+      - reports/tcmd_353/turn_soccer_phase1_summary.md (本cmd 報告書、企画書概要+デプロイ URL+次段階推奨)
+      - GitHub commit + push
+
+      ===================
+      動作確認
+      ===================
+      家老C:
+        1. /home/shuirein928/turn-soccer/ フォルダ存在
+        2. DESIGN.md 読了で殿が段階2 判断できる詳細
+        3. GitHub リポ作成成功 (gh repo view で確認)
+        4. Vercel デプロイ URL アクセスで雛形 HTML 表示
+        5. reports/tcmd_353/ report 完成
+        6. 大将軍に send-keys で完了報告
+
+      ===================
+      家老C 全裁量
+      ===================
+      - 技術選定 (Vanilla JS or Phaser 等)
+      - GitHub リポ名 (turn-soccer 推奨)
+      - public/private 採択 (Mini Gather は private)
+      - DESIGN.md 詳細度
+      - UI モック方式 (ASCII or HTML 雛形)
+      - 段階2 以降のロードマップ詳細
+      - 足軽配分 (C1-C4 各セクション分担推奨: C1=企画/C2=雛形/C3=GitHub/C4=Vercel)
+      - 期待タイム 1-2時間目安、Sonnet 集中
+
+      ===================
+      禁止事項
+      ===================
+      - 殿の他PJ無接触
+      - Mini Gather 開発タスクへの干渉禁止
+      - 軍B (tcmd_352 進行中) のコードへの手出し禁止
+      - 完全無料運用を破る案禁止 (有料サービス禁止)
+      - 段階1 でゲームロジック実装禁止 (雛形と企画のみ)
+      - 殿が指示してない追加機能禁止 (YAGNI)
+      - GitHub auth/Vercel auth で殿手作業必要なら明示し殿に依頼 (勝手に進めない)
+
+      ===================
+      完了条件
+      ===================
+      - /home/shuirein928/turn-soccer/ プロジェクト雛形完成
+      - DESIGN.md 企画書完成 (11セクション、ASCII モック含む)
+      - GitHub リポ作成+push 完了
+      - Vercel デプロイ URL 取得+稼働確認
+      - reports/tcmd_353/turn_soccer_phase1_summary.md 配置
+      - 大将軍に send-keys で完了報告 (デプロイURL+企画書概要+次段階推奨+ファイルパス)
+
+      **親tcmd**: tcmd_353（殿企画指示「Cでおk」、大将軍→将軍C、medium優先）
+
