@@ -2313,3 +2313,204 @@ queue:
       **親tcmd**: tcmd_355_phase3 (大将軍YAML上の tcmd_355 は別件で done 済のため、本cmdは
                   tcmd_355_phase3 として識別。殿発令「Phase 3、将軍C 全裁量、殿全権委任」)
 
+  - id: cmd_019
+    parent_tcmd: tcmd_356_phase4
+    timestamp: '2026-05-11T22:34:11+09:00'
+    project: turn_soccer
+    priority: high
+    status: done
+    note: |
+      [将軍Cメモ] 殿発令「tcmd_356_phase4 リアル化大改修 一気発令、priority:high、CLAUDE.md
+      殿確定 2026-05-10 嘘禁止/目視ルール厳守、家老C C1 Opus集中」。
+      大将軍YAML 上の tcmd_356_phase4 は正式に独立識別子で登録済 (番号衝突なし、Phase 2/3 と異なり
+      明示的 phase suffix で発令されている)。本cmd の parent_tcmd は tcmd_356_phase4 そのまま。
+      殿確定ルール (2026-05-10 嘘禁止/目視) は KZ-188 改良50回目+KZ-189 第46弾の文脈で大将軍が
+      tcmd 命令文中に7シーン必須検証として明文化済 — そのまま家老Cへ徹底させる。
+      Phase 4 は大規模 (グリッド化+22人毎ターン+パスUX+専任全選手+AI拡張+リアル感総合) =
+      Phase 2/3 (~14-15分) より長丁場、最低 30-60分目安、家老C C1 集中 Opus。
+    command: |
+      【Turn Soccer Phase 4 — リアル化大改修 ★★★ 殿FB「リアル志向を忘れるな」核心 ★★★】
+
+      ===================
+      🎯 殿確定 (2026-05-11、Phase 3 完遂後 FB、本日high priority 一気発令)
+      ===================
+      殿FB引用 (絶対遵守):
+      ①「パスとか誰にパスするかとか選べないといけないね」
+      ②「11人と11人の動きは毎ターン全員ポジション変わるもんじゃない？サッカーって」
+      ③「1人プレイの時もGKだとして、毎ターン行動したい。前に1マス行くとかでいい」
+      ④「マスの概念入れたほうがやりやすいんじゃない？」
+      ⑤「全員からパスも選択できていいはず、パス→選手選択→その時点で確立とか出る。→決定で実際に判定し、うごく」
+      ⑥「ピッチ全体をグリッド化。十分に広くすること。リアル重視」
+      ⑦「Q4. 専任モード GK の行動ってか全部そうね。どの選手選んでも同じようにできないとだめでしょ？」
+      ⑧ ★最重要キーワード★「リアル志向を忘れるな」「リアル重視」「リアル化は大事にして」(3 連発)
+
+      ===================
+      🚨 仕様 (殿確定 全項目、家老C 全裁量で技術選定)
+      ===================
+
+      ## A. ピッチグリッド化 (★殿FB④⑥)
+      - ピッチ全体をグリッド化 (16x10 以上、★家老C 判断で十分広く)
+      - 選手位置=マス単位 (整数座標)
+      - グリッド線描画 (薄い視認性、リアル感を損なわない程度)
+
+      ## B. 毎ターン全選手移動 (★殿FB② = 22人全員動く)
+      - HOME ターン: HOME 11人全員が移動 or 行動
+      - AWAY ターン: AWAY 11人全員が移動 or 行動
+      - 1選手専任モード: 殿が専任選手の行動選択、残り 21人は AI 自動 (Phase 3 AI 流用+拡張)
+      - リアル重視: 全選手がフィールド全域動き回る (現代サッカーの流動性)
+
+      ## C. パス先選手選択 UI (★殿FB①⑤)
+      - パス選択 → **全味方 10人** から選択画面
+      - 選手選択時点で確率表示 (距離・角度・敵密度等で動的計算)
+      - 決定で実際に判定 → 成功/失敗 → ボール移動
+      - 全味方選択可だが、距離が遠いほど確率低下 (現実的)
+
+      ## D. 専任モード全選手対応 (★殿FB③⑦)
+      - GK/CB/FW どのポジション選んでも**毎ターン行動可能**
+      - 行動例: 「前に1マス」「後ろに1マス」「右に1マス」「左に1マス」「ボール保持時はパス/ドリブル/シュート」
+      - 選手ごとの差異禁止 (FW でも GK でも同じ移動範囲・行動セット)
+
+      ## E. AI 強化拡張 (Phase 3 流用、21体並列)
+      - リアル重視: ボール周辺は密集、遠い選手は陣形維持
+      - 軽量化必須 (1ターン処理 1秒以内目標)
+
+      ## F. リアル志向 全般 (★★★殿FB⑧)
+      - 戦術的密集/分散の表現
+      - ドリブル成功時は前進、失敗時は奪取
+      - シュートはゴール距離+守備密度で確率変動
+      - 体力/オフサイド等の付加機能は Phase 4 or 5 送り、家老C 判断
+
+      ## 🚨 バックアップ必須
+      - main_backup_tcmd356_pre_realism
+
+      ===================
+      🚨 厳守事項
+      ===================
+
+      ## 殿確定ルール (2026-05-10 殿激怒、CLAUDE.md+MEMORY化済)
+
+      ### 嘘禁止 (honest_assessment 文化、KZ-189 系)
+      - 数値で PASS と書くなら実態と一致させよ
+      - 失敗・caveat は honest に明記、隠すな
+      - 実機動作 vs 仕様書で乖離あれば必ず報告
+      - md5 突合 / 動作証明 banner / 独立検証で「真の試金石」を通せ
+
+      ### 目視ルール (feedback_visual_verify_strict)
+      - **「目視」と書く前に必ず Read tool で画像を開く**
+      - 文字 dump や数値だけで「目視確認」と称するな
+      - 数値だけで PASS 主張禁止
+      - 7シーン全てを家老C 自身が画像 Read で目視確認してから報告
+
+      ## 必須7シーン (md5 distinct 必須)
+      1. scene_grid_pitch (グリッド化ピッチ目視、十分広い、★殿FB④⑥ 核心)
+      2. scene_22players_move (1ターンで HOME/AWAY 全員動く、★殿FB② 核心)
+      3. scene_pass_target_select (パス→選手選択UI→確率表示→決定、★殿FB①⑤ 核心)
+      4. scene_solo_GK_action (GK 選択で毎ターン「前に1マス」等行動、★殿FB③⑦ 核心)
+      5. scene_solo_CB_action (CB でも同じ行動セット、★殿FB⑦ 核心)
+      6. scene_solo_FW_action (FW でも同じ行動セット、★殿FB⑦ 核心)
+      7. scene_realism (リアル感総合確認、★殿FB⑧ 核心)
+
+      ## Phase 1-3 既存機能維持
+      - DESIGN.md (企画書) 核心方針保持、実装で発見した修正は DESIGN.md 更新で反映
+      - Phase 2 MVP 6項目 (ターン進行/汎用選択肢/確率判定/22選手配置/フィールド描画/11vs11) 維持
+      - Phase 3 機能 3項目 (1選手専任モード/個人スキル5種/AI強化) 維持
+      - GitHub リポ Mogy1945/turn-soccer 維持、Phase 1-3 commit 系列保全
+      - Vercel 連動デプロイ維持
+
+      ## 殿の他PJ無接触
+      - Mini Gather に手を出さない
+      - 軍A/B のタスク影響なし
+
+      ## 完全無料運用維持
+      - Vercel Hobby + GitHub free + 無料CDN のみ
+
+      ## YAGNI 厳守
+      - 体力/オフサイド等の付加機能は Phase 5 以降 (家老C 判断、本cmdに入れるか分割するか裁量)
+      - BGM/SE は段階5 以降
+      - 殿好み「足すより削る」哲学 — ただし殿FB①〜⑧ は「足す」明確指示なので全達成必須
+
+      ## 全軍 Opus (feedback_no_sonnet 2026-05-09 殿確定)
+      - **家老C C1 Opus 集中** (殿明示指示)、Sonnet 採用禁止
+
+      ## 60fps 維持・console.error 0件
+
+      ===================
+      🚨 git push 必達
+      ===================
+      - **commit 分割推奨** (グリッド化/全選手移動/パスUX/専任拡張 で 3-4 commit)
+      - version 0.3.0 → 0.4.0 (minor bump、大規模機能追加)
+      - HTML head version コメント更新
+      - push確認エビデンス4点立証 (Phase 1-3 同水準):
+        (1) ls-remote = local HEAD 完全一致
+        (2) git log origin/main..HEAD 空
+        (3) git status clean
+        (4) git diff origin/main..HEAD 空
+      - Vercel auto-deploy 稼働確認 → 殿確認可能 URL 取得
+
+      ===================
+      期待出力
+      ===================
+      - 実コード改修 (グリッド化+22人移動+パスUX+専任拡張+AI強化)
+      - reports/tcmd_356_phase4/
+        * phase4_realism_summary.md
+        * gameplay_walkthrough.md
+        * playwright_evidence/ (必須7シーン+md5突合)
+      - GitHub commit+push (version 0.4.0、commit hash)
+      - Vercel デプロイ URL (殿確認可能、Phase 3 URL 継承 or 更新)
+
+      ===================
+      動作確認・検証
+      ===================
+      家老C:
+        1. main_backup_tcmd356_pre_realism バックアップ作成
+        2. 殿FB ①〜⑧ 全項目達成
+        3. 必須7シーン全PASS+md5 distinct
+        4. Phase 1-3 既存機能維持
+        5. **Read tool で全シーン画像確認** (feedback_visual_verify_strict 厳守、文字dump禁止)
+        6. console.error 0件、60fps維持
+        7. push確認エビデンス4点立証
+        8. honest_assessment: caveat あれば隠さず明記 (KZ-189 系運用継続)
+        9. 大将軍に send-keys で完了報告 (デプロイURL+commit hash+実装サマリ+ファイルパス+殿FB①〜⑧達成証明)
+
+      ===================
+      家老C 全裁量
+      ===================
+      - グリッドサイズ (16x10 推奨、20x12 等もOK、十分広く)
+      - パス確率計算式 (距離+敵密度+ポジション角度等)
+      - 22人移動の順序 (一括 or 順次アニメ)
+      - AI 軽量化手法
+      - 体力/オフサイド等の付加機能 (Phase 4 or 5 送り、家老C 判断)
+      - 足軽配分 (殿明示「C1 Opus 集中」)
+      - 期待タイム 30-60分目安、複雑なら分割提案OK
+
+      ===================
+      禁止事項
+      ===================
+      - 殿の他PJ無接触
+      - Mini Gather/Night City Tab 開発タスクへの干渉禁止
+      - 軍A/B のタスク影響なし
+      - 完全無料運用を破る案禁止
+      - 殿FB ①〜⑧ 以外の追加機能禁止 (YAGNI)
+      - tcmd_353/354/355 既存 commit への直接手出し (バックアップ経由のみ)
+      - **バックアップ取らずに修正禁止**
+      - **🚨 Sonnet 採用禁止 (殿確定 全Opus統一、家老C C1 Opus集中)**
+      - **🚨 「目視」と書く前に Read tool で画像確認なし禁止 (CLAUDE.md 殿確定 2026-05-10)**
+      - 数値だけで PASS 主張禁止、嘘禁止 (honest_assessment 必須)
+
+      ===================
+      完了条件
+      ===================
+      - main_backup_tcmd356_pre_realism バックアップ存在
+      - 殿FB ①〜⑧ 全項目達成
+      - 必須7シーン全PASS+md5 distinct
+      - Phase 1-3 既存機能維持
+      - reports/tcmd_356_phase4/ 配置 (phase4_realism_summary.md+gameplay_walkthrough.md+playwright_evidence/7シーン+md5)
+      - GitHub commit+push (version 0.4.0、4点立証)
+      - 大将軍に send-keys で完了報告 (デプロイURL+commit hash+実装サマリ+殿FB①〜⑧達成証明+ファイルパス)
+      - 🚨 Phase 4 リアル化完遂
+      - honest_assessment: caveat あれば隠さず明記
+
+      **親tcmd**: tcmd_356_phase4 (大将軍YAML 上に正式独立識別子で登録、Phase 2/3 と異なり
+                  番号衝突なし。殿発令「リアル化大改修 一気発令 priority:high
+                  家老C C1 Opus集中 CLAUDE.md 殿確定 2026-05-10 嘘禁止/目視ルール厳守」)
+
